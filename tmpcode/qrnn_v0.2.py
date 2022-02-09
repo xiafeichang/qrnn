@@ -23,7 +23,7 @@ class QRNN(object):
     """
     
 
-    def __init__(self, df, features, target, scale_file=None):
+    def __init__(self, df, features, target, scale_file=None, use_model=None, quantile=None):
         
         self.features = features
         self.target = target
@@ -39,9 +39,17 @@ class QRNN(object):
             self.X = df.loc[:,self.features]
             self.Y = df.loc[:,self.target]
 
+'''
+        if use_model is not None:
+            self.model = load_model(use_model, compile=False) 
+            if quantile is not None: 
+                self.q = quantile
+            else: 
+                raise TypeError("To use an existing model, specify the quantile with 'quantile=your_quantile'") 
+'''
+
 
     def trainQuantile(self, q, num_hidden_layers=1, num_units=None, act=None, batch_size=64, save_file=None):
-        print('train for quantile {}'.format(q))
 
         input_dim = len(self.features)
         
@@ -67,13 +75,11 @@ class QRNN(object):
         self.model = Model(inpt, x)
  
 
-        def custom_loss(y_t, y_p): 
-            return qloss(y_t,y_p,q)
-
+        custom_loss = lambda y_t, y_p: qloss(y_t,y_p,q)
         self.model.compile(loss=custom_loss, optimizer='adadelta')
         self.model.fit(self.X, 
                        self.Y, 
-                       epochs = 10, 
+                       epochs = 20, 
                        batch_size = batch_size, 
                        shuffle = True)
 
@@ -84,13 +90,10 @@ class QRNN(object):
         return self.model
     
 
-    def predict(self, q, model_from=None):
-
-        def custom_loss(y_t, y_p): 
-            return qloss(y_t,y_p,q)
+    def predict(self, model_from=None):
 
         try:
-            model = load_model(model_from, custom_objects={'custom_loss':custom_loss})
+            model = load_model(model_from)
         except FileNotFoundError: 
             model = self.model
 
