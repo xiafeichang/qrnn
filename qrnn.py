@@ -64,24 +64,24 @@ class QRNN(object):
         
         x = Dense(1, activation=None, use_bias=True, kernel_initializer='he_normal', bias_initializer='he_normal')(x)
     
-        self.model = Model(inpt, x)
+        model = Model(inpt, x)
  
 
         def custom_loss(y_t, y_p): 
             return qloss(y_t,y_p,q)
 
-        self.model.compile(loss=custom_loss, optimizer='adadelta')
-        self.model.fit(self.X, 
-                       self.Y, 
-                       epochs = 10, 
-                       batch_size = batch_size, 
-                       shuffle = True)
+        model.compile(loss=custom_loss, optimizer='adadelta')
+        model.fit(self.X, 
+                  self.Y, 
+                  epochs = 10, 
+                  batch_size = batch_size, 
+                  shuffle = True)
 
 
         if save_file is not None:
-            self.model.save(save_file)
+            model.save(save_file)
 
-        return self.model
+        return 0
     
 
     def predict(self, q, model_from=None):
@@ -89,10 +89,7 @@ class QRNN(object):
         def custom_loss(y_t, y_p): 
             return qloss(y_t,y_p,q)
 
-        try:
-            model = load_model(model_from, custom_objects={'custom_loss':custom_loss})
-        except FileNotFoundError: 
-            model = self.model
+        model = load_model(model_from, custom_objects={'custom_loss':custom_loss})
 
         self.predictedY = model.predict(self.X)
 
