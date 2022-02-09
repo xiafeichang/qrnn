@@ -1,0 +1,24 @@
+name: QRNN
+channels:
+  - conda-forge
+dependencies:
+  - python=3.7.8
+  - jupyterlab>=2.0.0
+  - numpy>=1.18.1
+  - bokeh>=2.0.0
+  - dask
+  - dask-labextension
+  - nodejs
+  - distributed
+  - dask-jobqueue
+  - notebook
+  - ipywidgets>=7.5
+  - root
+  - uproot
+  - aghast
+  - boost-histogram
+  - mplhep
+  - pandas
+  - pytables
+  - tensorflow
+  - keras
