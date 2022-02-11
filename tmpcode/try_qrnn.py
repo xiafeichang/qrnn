@@ -19,7 +19,7 @@ df_test_raw  = df_smp[1000000:]
 
 #set features and target
 features = kinrho 
-target = variables[2]
+target = variables[0]
 
 #train for quantile q
 #qs = [0.1, 0.5, 0.9]
@@ -28,14 +28,14 @@ target = variables[2]
 #act = ['tanh', 'tanh']
 
 qs = [0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.99]
-num_hidden_layers = 5
-num_units = [500, 300, 200, 100, 50]
-act = ['tanh','exponential', 'softplus', 'tanh', 'elu']
+num_hidden_layers = 3
+num_units = [1000, 500, 100]
+act = ['tanh', 'softplus', 'elu']
 
-scale_para_file = 'scale_para_{}_{}.h5'.format(inputfile[3:-12], target)
+scale_para_file = 'scale_para/{}_{}.h5'.format(inputfile[3:-12], target)
 
 for q in qs:
-    model_file = 'model_{}_{}'.format(target,str(q).replace('.','p'))
+    model_file = 'models/{}_{}'.format(target,str(q).replace('.','p'))
     
     qrnn = QRNN(df_train, features, target, scale_file=scale_para_file)
 #    qrnn.trainQuantile(q,num_hidden_layers,num_units,act,batch_size=32, save_file=model_file)
@@ -48,7 +48,7 @@ for i in range(len(pTs)-1):
     
     q_pred = []
     for q in qs:
-        model_file = 'model_{}_{}'.format(target,str(q).replace('.','p'))
+        model_file = 'models/{}_{}'.format(target,str(q).replace('.','p'))
     
         qrnn_test = QRNN(df_test, features, target, scale_file=scale_para_file)
         q_pred.append(np.mean(qrnn_test.predict(q, model_from=model_file)))
@@ -58,6 +58,6 @@ for i in range(len(pTs)-1):
     fig = plt.figure(tight_layout=True)
     plt.hist(df_test[target], bins=100, density=True, cumulative=True, histtype='step')
     plt.plot(q_pred, qs, 'o')
-    fig.savefig('try_qrnn_' + target + '_' + str(i) + '.png')
-    fig.savefig('try_qrnn_' + target + '_' + str(i) + '.pdf')
+    fig.savefig('plots/' + target + '_' + str(i) + '.png')
+    fig.savefig('plots/' + target + '_' + str(i) + '.pdf')
 
