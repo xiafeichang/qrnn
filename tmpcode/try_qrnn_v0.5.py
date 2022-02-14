@@ -77,32 +77,32 @@ def main():
     #train
     #for target in variables: 
     
-#    print('>>>>>>>>> train for variable {}'.format(target))
-#    X = df_train.loc[:,features]
-#    Y = df_train.loc[:,target]
-#    
-#    cluster, client = setup_cluster('dask_cluster_config.yml')
-#    cluster.scale(len(qs))
-#    client.wait_for_workers(1)
-#
-#    futures = [client.submit(trainQuantile,
-#                             X, 
-#                             Y, 
-#                             q,
-#                             num_hidden_layers,
-#                             num_units,
-#                             act,
-#                             batch_size = 8192,
-#                             scale_par = scale_par,
-#                             save_file = 'models/{}_{}'.format(target,str(q).replace('.','p'))
-#                             ) for q in qs ]
-#
-#    results = client.gather(futures)
-#    del futures
-#
-#    close_cluster(cluster, client)
-#    del cluster 
-#    del client
+    print('>>>>>>>>> train for variable {}'.format(target))
+    X = df_train.loc[:,features]
+    Y = df_train.loc[:,target]
+    
+    cluster, client = setup_cluster('dask_cluster_config.yml')
+    cluster.scale(len(qs))
+    client.wait_for_workers(1)
+
+    futures = [client.submit(trainQuantile,
+                             X, 
+                             Y, 
+                             q,
+                             num_hidden_layers,
+                             num_units,
+                             act,
+                             batch_size = 8192,
+                             scale_par = scale_par,
+                             save_file = 'models/{}_{}'.format(target,str(q).replace('.','p'))
+                             ) for q in qs ]
+
+    results = client.gather(futures)
+    del futures
+
+    close_cluster(cluster, client)
+    del cluster 
+    del client
     
     #test
 #    plt.ioff()

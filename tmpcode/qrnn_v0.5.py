@@ -62,10 +62,6 @@ def trainQuantile(X, Y, q, num_hidden_layers=1, num_units=None, act=None, batch_
 
 def predict(X, model_from=None, scale_par=None, target=None):
 
-    if scale_par is not None:
-        logger.info('Scaling features and with {}! '.format(scale_par))
-        X = scale(X, scale_par)
-
     def custom_loss(y_t, y_p): 
         return qloss(y_t,y_p,q)
 
