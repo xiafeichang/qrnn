@@ -11,7 +11,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def trainQuantile(X, Y, q, num_hidden_layers=1, num_units=None, act=None, batch_size=64, save_file=None):
+def trainQuantile(X, Y, q, num_hidden_layers=1, num_units=None, act=None, batch_size=64, scale_par=None, save_file=None):
+
+    if scale_par is not None:
+        logger.info('Scaling features and target with {}! '.format(scale_par))
+        X = scale(X, scale_par)
+        Y = scale(Y, scale_par).loc[:,Y.name]
 
     input_dim = len(X.keys())
     
@@ -55,7 +60,11 @@ def trainQuantile(X, Y, q, num_hidden_layers=1, num_units=None, act=None, batch_
 #    return model
 
 
-def predict(X, model_from=None, scale_par=None):
+def predict(X, model_from=None, scale_par=None, target=None):
+
+    if scale_par is not None:
+        logger.info('Scaling features and with {}! '.format(scale_par))
+        X = scale(X, scale_par)
 
     def custom_loss(y_t, y_p): 
         return qloss(y_t,y_p,q)
@@ -66,7 +75,8 @@ def predict(X, model_from=None, scale_par=None):
 
     if scale_par is not None: 
         logger.info('target is scaled, now mapping it back!')
-        predY = predY*scale_par['sigma'] + scale_par['mu']
+        par = pd.read_hdf(scale_par)
+        predY = predY*par[target]['sigma'] + par[target]['mu']
 
     return predY
         
@@ -77,6 +87,7 @@ def scale(df, scale_file):
     df = pd.DataFrame(df)
 
     par = pd.read_hdf(scale_file).loc[:,df.keys()] 
+#    print(par)
 
     df_scaled = (df - par.loc['mu',:])/par.loc['sigma',:]
     return df_scaled

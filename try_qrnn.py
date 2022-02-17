@@ -1,9 +1,10 @@
+import time
 import yaml
 import numpy as np
 import pandas as pd
 import matplotlib
 from matplotlib import pyplot as plt
-from qrnn import trainQuantile, predict
+from qrnn import trainQuantile, predict, scale
 
 #from joblib import delayed, Parallel, parallel_backend, register_parallel_backend
 from dask.distributed import Client, LocalCluster, progress, wait, get_client
@@ -41,23 +42,20 @@ def gen_scale_par(df, variables, scale_file):
     par = pd.DataFrame([df.mean(), df.std()], index=['mu', 'sigma'])
     par.to_hdf(scale_file, key='scale_par', mode='w')
 
-def test(X, q, model_from, scale_par, target):
-    return q, np.mean(predict(X, model_from, scale_par, target))
+def test(X, q, model_from, scale_par):
+    return q, np.mean(predict(X, model_from, scale_par))
     
 
 def main():
     variables = ['probeCovarianceIeIp','probeS4','probeR9','probePhiWidth','probeSigmaIeIe','probeEtaWidth']
     kinrho = ['probePt','probeScEta','probePhi','rho'] 
       
-    inputfile = 'df_data_EB_train.h5'
-    n_evt = 2000000
+    inputtrain = 'df_data_EB_train.h5'
+    inputtest = 'df_data_EB_test.h5'
     
     #load dataframe
-    df_total = pd.read_hdf(inputfile)
-    df_smp = df_total.sample(n_evt, random_state=100).reset_index(drop=True)
-    
-    df_train = df_smp[:1000000] 
-    df_test_raw  = df_smp[1000000:] 
+    df_train = (pd.read_hdf(inputtrain).loc[:,kinrho+variables])
+    df_test_raw  = (pd.read_hdf(inputtest).loc[:,kinrho+variables])#.sample(1000, random_state=100).reset_index(drop=True)
     
     #set features and target
     features = kinrho 
@@ -71,44 +69,54 @@ def main():
     act = ['tanh','exponential', 'softplus', 'tanh', 'elu']
 
     #generate scale parameters
-    scale_par = 'scale_para/{}.h5'.format(inputfile[3:-12])
+    scale_par = 'scale_para/{}.h5'.format(inputtrain[3:-12])
     gen_scale_par(df_train, kinrho+variables, scale_par)
+    #scale data
+    df_train = scale(df_train, scale_file=scale_par)
+    df_test_raw = scale(df_test_raw, scale_file=scale_par)
         
     #train
     #for target in variables: 
     
-#    print('>>>>>>>>> train for variable {}'.format(target))
-#    X = df_train.loc[:,features]
-#    Y = df_train.loc[:,target]
-#    
-#    cluster, client = setup_cluster('dask_cluster_config.yml')
-#    cluster.scale(len(qs))
-#    client.wait_for_workers(1)
-#
-#    futures = [client.submit(trainQuantile,
-#                             X, 
-#                             Y, 
-#                             q,
-#                             num_hidden_layers,
-#                             num_units,
-#                             act,
-#                             batch_size = 8192,
-#                             scale_par = scale_par,
-#                             save_file = 'models/{}_{}'.format(target,str(q).replace('.','p'))
-#                             ) for q in qs ]
-#
-#    results = client.gather(futures)
-#    del futures
-#
-#    close_cluster(cluster, client)
-#    del cluster 
-#    del client
+    print('>>>>>>>>> train for variable {}'.format(target))
+#    train_start = time.time()
+
+    X = df_train.loc[:,features]
+    Y = df_train.loc[:,target]
+    
+    # setup clusters with dask
+    cluster, client = setup_cluster('dask_cluster_config.yml')
+    cluster.scale(len(qs))
+    client.wait_for_workers(1)
+
+    futures = [client.submit(trainQuantile,
+                             X, 
+                             Y, 
+                             q,
+                             num_hidden_layers,
+                             num_units,
+                             act,
+                             batch_size = 8192,
+                             save_file = 'models/{}_{}'.format(target,str(q).replace('.','p'))
+                             ) for q in qs ]
+
+    results = client.gather(futures)
+    del futures
+
+    close_cluster(cluster, client)
+    del cluster 
+    del client
+    
+#    train_end = time.time()
+#    print('time spent in training: {} s'.format(train_end-train_start))
     
     #test
 #    plt.ioff()
     matplotlib.use('agg')
     print('>>>>>>>>> test for variable {}'.format(target))
-    pTs = [25., 30., 35., 40., 45., 50., 60., 150.]
+    target_scale_par = pd.read_hdf(scale_par).loc[:,target]
+    pT_scale_par = pd.read_hdf(scale_par).loc[:,'probePt']
+    pTs = (np.array([25., 30., 35., 40., 45., 50., 60., 150.]) - pT_scale_par['mu'])/pT_scale_par['sigma']
     for i in range(len(pTs)-1): 
         df_test = df_test_raw.query('probePt>' + str(pTs[i]) + ' and probePt<' + str(pTs[i+1]))
         X_test = df_test.loc[:,features]
@@ -121,15 +129,14 @@ def main():
                                       X_test, 
                                       q,
                                       model_from = 'models/{}_{}'.format(target,str(q).replace('.','p')),
-                                      scale_par = scale_par, 
-                                      target = target
+                                      scale_par = target_scale_par, 
                                       ) for q in qs ]
 
         progress(futures_test)
         test_results = np.array(client.gather(futures_test)).T
 
         fig = plt.figure(tight_layout=True)
-        plt.hist(df_test[target], bins=100, density=True, cumulative=True, histtype='step')
+        plt.hist((df_test[target]*target_scale_par['sigma']+target_scale_par['mu']), bins=100, density=True, cumulative=True, histtype='step')
         plt.plot(test_results[1], test_results[0], 'o')
         fig.savefig('plots/' + target + '_' + str(i) + '.png')
 #        fig.savefig('plots/' + target + '_' + str(i) + '.pdf')
