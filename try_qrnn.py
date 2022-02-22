@@ -59,11 +59,13 @@ def main():
     
     #set features and target
     features = kinrho 
-    target = variables[0]
+#    target = variables[0]
     
     pTs = [25., 30., 35., 40., 45., 50., 60., 150.]
     
     qs = [0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.99]
+
+    # comments: good performence on smooth distribution, but not suitable for distributions with cutoffs
     num_hidden_layers = 5
     num_units = [500, 300, 200, 100, 50]
     act = ['tanh','exponential', 'softplus', 'tanh', 'elu']
@@ -76,45 +78,43 @@ def main():
     df_test_raw = scale(df_test_raw, scale_file=scale_par)
         
     #train
-    #for target in variables: 
     
-    print('>>>>>>>>> train for variable {}'.format(target))
-#    train_start = time.time()
+    train_start = time.time()
+    for target in variables: 
+        print('>>>>>>>>> train for variable {}'.format(target))
 
-    X = df_train.loc[:,features]
-    Y = df_train.loc[:,target]
+        X = df_train.loc[:,features]
+        Y = df_train.loc[:,target]
+        
+        # setup clusters with dask
+        cluster, client = setup_cluster('dask_cluster_config.yml')
+        cluster.scale(len(qs))
+        client.wait_for_workers(1)
+
+        futures = [client.submit(trainQuantile,
+                                 X, 
+                                 Y, 
+                                 q,
+                                 num_hidden_layers,
+                                 num_units,
+                                 act,
+                                 batch_size = 8192,
+                                 save_file = 'models/{}_{}'.format(target,str(q).replace('.','p'))
+                                 ) for q in qs ]
+
+        results = client.gather(futures)
+        del futures
+
+        close_cluster(cluster, client)
+        del cluster 
+        del client
     
-    # setup clusters with dask
-    cluster, client = setup_cluster('dask_cluster_config.yml')
-    cluster.scale(len(qs))
-    client.wait_for_workers(1)
-
-    futures = [client.submit(trainQuantile,
-                             X, 
-                             Y, 
-                             q,
-                             num_hidden_layers,
-                             num_units,
-                             act,
-                             batch_size = 8192,
-                             save_file = 'models/{}_{}'.format(target,str(q).replace('.','p'))
-                             ) for q in qs ]
-
-    results = client.gather(futures)
-    del futures
-
-    close_cluster(cluster, client)
-    del cluster 
-    del client
-    
-#    train_end = time.time()
-#    print('time spent in training: {} s'.format(train_end-train_start))
+    train_end = time.time()
+    print('time spent in training: {} s'.format(train_end-train_start))
     
     #test
 #    plt.ioff()
     matplotlib.use('agg')
-    print('>>>>>>>>> test for variable {}'.format(target))
-    target_scale_par = pd.read_hdf(scale_par).loc[:,target]
     pT_scale_par = pd.read_hdf(scale_par).loc[:,'probePt']
     pTs = (np.array([25., 30., 35., 40., 45., 50., 60., 150.]) - pT_scale_par['mu'])/pT_scale_par['sigma']
     for i in range(len(pTs)-1): 
@@ -125,22 +125,25 @@ def main():
         cluster.scale(len(qs))
         client.wait_for_workers(1)
 
-        futures_test = [client.submit(test,
-                                      X_test, 
-                                      q,
-                                      model_from = 'models/{}_{}'.format(target,str(q).replace('.','p')),
-                                      scale_par = target_scale_par, 
-                                      ) for q in qs ]
+        for target in variables: 
+            print('>>>>>>>>> test for variable {}'.format(target))
+            target_scale_par = pd.read_hdf(scale_par).loc[:,target]
+            futures_test = [client.submit(test,
+                                          X_test, 
+                                          q,
+                                          model_from = 'models/{}_{}'.format(target,str(q).replace('.','p')),
+                                          scale_par = target_scale_par, 
+                                          ) for q in qs ]
 
-        progress(futures_test)
-        test_results = np.array(client.gather(futures_test)).T
+            progress(futures_test)
+            test_results = np.array(client.gather(futures_test)).T
 
-        fig = plt.figure(tight_layout=True)
-        plt.hist((df_test[target]*target_scale_par['sigma']+target_scale_par['mu']), bins=100, density=True, cumulative=True, histtype='step')
-        plt.plot(test_results[1], test_results[0], 'o')
-        fig.savefig('plots/' + target + '_' + str(i) + '.png')
-#        fig.savefig('plots/' + target + '_' + str(i) + '.pdf')
-        plt.close(fig)
+            fig = plt.figure(tight_layout=True)
+            plt.hist((df_test[target]*target_scale_par['sigma']+target_scale_par['mu']), bins=100, density=True, cumulative=True, histtype='step')
+            plt.plot(test_results[1], test_results[0], 'o')
+            fig.savefig('plots/' + target + '_' + str(i) + '.png')
+#            fig.savefig('plots/' + target + '_' + str(i) + '.pdf')
+            plt.close(fig)
 
         close_cluster(cluster, client)
         del cluster 
