@@ -11,7 +11,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def trainQuantile(X, Y, q, num_hidden_layers=1, num_units=None, act=None, batch_size=64, save_file=None):
+def trainQuantile(X, Y, num_hidden_layers=1, num_units=None, act=None, batch_size=64, save_file=None):
 
     input_dim = len(X.keys())
     
@@ -32,15 +32,12 @@ def trainQuantile(X, Y, q, num_hidden_layers=1, num_units=None, act=None, batch_
 #        x = Dropout(dp[i])(x)
 #        x = GaussianNoise(gauss_std[i])(x)  
     
-    x = Dense(1, activation=None, use_bias=True, kernel_initializer='he_normal', bias_initializer='he_normal')(x)
+    x = Dense(21, activation=None, use_bias=True, kernel_initializer='he_normal', bias_initializer='he_normal')(x)
 
     model = Model(inpt, x)
 
 
-    def custom_loss(y_t, y_p): 
-        return qloss(y_t,y_p,q)
-
-    model.compile(loss=custom_loss, optimizer='adadelta')
+    model.compile(loss=qloss, optimizer='adadelta')
     model.fit(X, 
               Y, 
               epochs = 10, 
@@ -57,10 +54,7 @@ def trainQuantile(X, Y, q, num_hidden_layers=1, num_units=None, act=None, batch_
 
 def predict(X, model_from=None, scale_par=None):
 
-    def custom_loss(y_t, y_p): 
-        return qloss(y_t,y_p,q)
-
-    model = load_model(model_from, custom_objects={'custom_loss':custom_loss})
+    model = load_model(model_from, custom_objects={'qloss':qloss})
 
     predY = model.predict(X)
 
@@ -82,8 +76,9 @@ def scale(df, scale_file):
     return df_scaled
 
 
-def qloss(y_true, y_pred, q):
+def qloss(y_true, y_pred):
+    q = np.array([0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.99])
     e = (y_true - y_pred)
-    return K.mean(K.maximum(q*e, (q-1.)*e), axis=-1)
+    return K.mean(K.maximum(q*e, (q-1.)*e))
 
 
