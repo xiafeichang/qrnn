@@ -70,7 +70,6 @@ def main():
 
     #generate scale parameters
     scale_file = 'scale_para/{}.h5'.format(inputtrain[3:-12])
-#    scale_par = pd.read_hdf(scale_file)
     scale_par = gen_scale_par(df_train, kinrho+variables, scale_file)
     #scale data
     df_train = scale(df_train, scale_file=scale_file)
@@ -80,14 +79,14 @@ def main():
     
     train_start = time.time()
 
-    target = variables[4]
+    target = variables[0]
     features = kinrho + variables[:variables.index(target)] 
     print('>>>>>>>>> train for variable {} with features {}'.format(target, features))
 
     X = df_train.loc[:,features]
     Y = df_train.loc[:,target]
     
-    trainQuantile(X, Y, num_hidden_layers, num_units, act, batch_size = 8192, epochs=10, save_file = 'combined_models/{}'.format(target))
+    trainQuantile(X, Y, num_hidden_layers, num_units, act, batch_size = 8192, save_file = 'combined_models/{}'.format(target))
 
     train_end = time.time()
     print('time spent in training: {} s'.format(train_end-train_start))

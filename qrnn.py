@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import pandas as pd
 from keras import backend as K
@@ -11,7 +12,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def trainQuantile(X, Y, num_hidden_layers=1, num_units=None, act=None, batch_size=64, save_file=None):
+def trainQuantile(X, Y, num_hidden_layers=1, num_units=None, act=None, batch_size=64, epochs=10, checkpoint_dir='./ckpt', save_file=None):
 
     input_dim = len(X.keys())
     
@@ -21,26 +22,23 @@ def trainQuantile(X, Y, num_hidden_layers=1, num_units=None, act=None, batch_siz
     if act is None:
         act = ['linear' for i in range(num_hidden_layers)]
 
+    # check checkpoint dir
+    if not os.path.exists(checkpoint_dir):
+        os.makedirs(checkpoint_dir)
 
-    inpt = Input((input_dim,), name='inpt')
+    # create a MirroredStrategy
+    strategy = tf.distribute.MirroredStrategy()
+    print("Number of devices: {}".format(strategy.num_replicas_in_sync))
 
-    x = inpt
-    
-    for i in range(num_hidden_layers):
-        x = Dense(num_units[i], use_bias=True, kernel_initializer='he_normal', bias_initializer='he_normal',
-                kernel_regularizer=regularizers.l2(0.001), activation=act[i])(x)
-#        x = Dropout(dp[i])(x)
-#        x = GaussianNoise(gauss_std[i])(x)  
-    
-    x = Dense(21, activation=None, use_bias=True, kernel_initializer='he_normal', bias_initializer='he_normal')(x)
+    with strategy.scope():
+        model = load_or_restore_model(checkpoint_dir, input_dim, num_hidden_layers, num_units, act, dp=None, gauss_std=None)
 
-    model = Model(inpt, x)
+    # save checkpoint every epoch
+    callbacks = [keras.callbacks.ModelCheckpoint(filepath=checkpoint_dir + "/ckpt-{epoch}", save_freq="epoch")]
 
-
-    model.compile(loss=qloss, optimizer='adadelta')
     model.fit(X, 
               Y, 
-              epochs = 10, 
+              epochs = epochs, 
               batch_size = batch_size, 
               shuffle = True)
 
@@ -74,6 +72,37 @@ def scale(df, scale_file):
 
     df_scaled = (df - par.loc['mu',:])/par.loc['sigma',:]
     return df_scaled
+
+
+def get_compiled_model(input_dim, num_hidden_layers, num_units, act, dp=None, gauss_std=None):
+
+    inpt = Input((input_dim,), name='inpt')
+
+    x = inpt
+    
+    for i in range(num_hidden_layers):
+        x = Dense(num_units[i], use_bias=True, kernel_initializer='he_normal', bias_initializer='he_normal',
+                kernel_regularizer=regularizers.l2(0.001), activation=act[i])(x)
+#        x = Dropout(dp[i])(x)
+#        x = GaussianNoise(gauss_std[i])(x)  
+    
+    x = Dense(21, activation=None, use_bias=True, kernel_initializer='he_normal', bias_initializer='he_normal')(x)
+
+    model = Model(inpt, x)
+
+    model.compile(loss=qloss, optimizer='adadelta')
+    return model
+
+
+def load_or_restore_model(checkpoint_dir, input_dim, num_hidden_layers, num_units, act, dp=None, gauss_std=None):
+
+    checkpoints = [checkpoint_dir + "/" + name for name in os.listdir(checkpoint_dir)]
+    if checkpoints:
+        latest_checkpoint = max(checkpoints, key=os.path.getctime)
+        print("Restoring from", latest_checkpoint)
+        return load_model(latest_checkpoint, custom_objects={'qloss':qloss})
+    print("Creating a new model")
+    return get_compiled_model(input_dim, num_hidden_layers, num_units, act, dp=None, gauss_std=None)
 
 
 def qloss(y_true, y_pred):
