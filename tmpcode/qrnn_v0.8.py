@@ -27,7 +27,7 @@ def trainQuantile(X, Y, num_hidden_layers=1, num_units=None, act=None, batch_siz
         os.makedirs(checkpoint_dir)
 
     # create a MirroredStrategy
-    strategy = tf.distribute.MirroredStrategy(devices= ["/gpu:0","/gpu:1"],cross_device_ops=tf.distribute.HierarchicalCopyAllReduce())
+    strategy = tf.distribute.MirroredStrategy()
     print("Number of devices: {}".format(strategy.num_replicas_in_sync))
 
     with strategy.scope():

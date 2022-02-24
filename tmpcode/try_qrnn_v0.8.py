@@ -80,7 +80,7 @@ def main():
     
     train_start = time.time()
 
-    target = variables[0]
+    target = variables[4]
     features = kinrho + variables[:variables.index(target)] 
     print('>>>>>>>>> train for variable {} with features {}'.format(target, features))
 
