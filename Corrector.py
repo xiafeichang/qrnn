@@ -4,10 +4,10 @@ from qrnn import trainQuantile, predict
 class Corrector:
 
    # store regressors
-   def __init__(self,mc_model,data_model,target,X,Y,scale_par=None,diz=False):
+   def __init__(self,mc_model,data_model,X,Y,scale_par=None,diz=False):
       self.diz=diz #Flag for distribution with discrete 0, i.e. Isolation
-      self.mcqtls   = np.array(predict(X,mc_model,scale_par,target))
-      self.dataqtls = np.array(predict(X,data_model,scale_par,target))
+      self.mcqtls   = np.array(predict(X,mc_model,scale_par))
+      self.dataqtls = np.array(predict(X,data_model,scale_par))
 
       self.Y = Y
 
@@ -48,5 +48,5 @@ class Corrector:
    def __call__(self):
       return np.array([ self.correctEvent(iev) for iev in range(self.Y.size) ]).ravel()
 
-def applyCorrection(mc_models,data_models,scale_par,target,X,Y,diz=False):
-   return Corrector(mc_models,data_models,scale_par,target,X,Y,diz)()
+def applyCorrection(mc_model,data_model,X,Y,scale_par=None,diz=False):
+   return Corrector(mc_model,data_model,X,Y,scale_par,diz)()

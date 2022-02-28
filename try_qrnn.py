@@ -61,17 +61,21 @@ def main():
     df_test_raw  = (pd.read_hdf(inputtest).loc[:,kinrho+variables])#.sample(100, random_state=100).reset_index(drop=True)
     
     # comments: good performence on smooth distribution, but not suitable for distributions with cutoffs
+    '''
     num_hidden_layers = 5
     num_units = [2000, 1000, 500, 200, 100]
     act = ['tanh','exponential', 'softplus', 'tanh', 'elu']
+    dropout = [0.1, 0.1, 0.1, 0.1, 0.1]
+    gauss_std = [0.2, 0.2, 0.2, 0.2, 0.2]
     '''
     num_hidden_layers = 3
-    num_units = [3000, 1000, 300]
+    num_units = [2000, 5000, 500]
     act = ['tanh','exponential', 'softplus']
-    '''
+    dropout = [0.1, 0.1, 0.1]
+    gauss_std = [0.2, 0.2, 0.2]
 
     #generate scale parameters
-    scale_file = 'scale_para/{}.h5'.format(inputtrain[3:-12])
+    scale_file = 'scale_para/data.h5'.format(inputtrain[3:-12])
 #    scale_par = pd.read_hdf(scale_file)
     scale_par = gen_scale_par(df_train, kinrho+variables, scale_file)
     #scale data
@@ -89,7 +93,7 @@ def main():
     X = df_train.loc[:,features]
     Y = df_train.loc[:,target]
     
-    trainQuantile(X, Y, num_hidden_layers, num_units, act, batch_size = 8192, epochs=10, 
+    trainQuantile(X, Y, num_hidden_layers, num_units, act, dropout, gauss_std, batch_size = 8192, epochs=10, 
                   checkpoint_dir='ckpt/'+target, save_file = 'combined_models/{}_{}'.format(data_key, target))
 
     train_end = time.time()

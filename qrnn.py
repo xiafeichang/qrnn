@@ -12,7 +12,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def trainQuantile(X, Y, num_hidden_layers=1, num_units=None, act=None, batch_size=64, epochs=10, checkpoint_dir='./ckpt', save_file=None):
+def trainQuantile(X, Y, num_hidden_layers=1, num_units=None, act=None, dp=None, gauss_std=None, batch_size=64, epochs=10, checkpoint_dir='./ckpt', save_file=None):
 
     input_dim = len(X.keys())
     
@@ -27,11 +27,12 @@ def trainQuantile(X, Y, num_hidden_layers=1, num_units=None, act=None, batch_siz
         os.makedirs(checkpoint_dir)
 
     # create a MirroredStrategy
+    print('devices: ', tf.config.list_physical_devices('GPU'))
     strategy = tf.distribute.MirroredStrategy(devices= ["/gpu:0","/gpu:1"],cross_device_ops=tf.distribute.HierarchicalCopyAllReduce())
     print("Number of devices: {}".format(strategy.num_replicas_in_sync))
 
     with strategy.scope():
-        model = load_or_restore_model(checkpoint_dir, input_dim, num_hidden_layers, num_units, act, dp=None, gauss_std=None)
+        model = load_or_restore_model(checkpoint_dir, input_dim, num_hidden_layers, num_units, act, dp, gauss_std)
 
     # save checkpoint every epoch
     callbacks = [keras.callbacks.ModelCheckpoint(filepath=checkpoint_dir + "/ckpt-{epoch}", save_freq="epoch")]
@@ -82,7 +83,7 @@ def get_compiled_model(input_dim, num_hidden_layers, num_units, act, dp=None, ga
     
     for i in range(num_hidden_layers):
         x = Dense(num_units[i], use_bias=True, kernel_initializer='he_normal', bias_initializer='he_normal',
-                kernel_regularizer=regularizers.l2(0.001), activation=act[i])(x)
+                  kernel_regularizer=regularizers.l2(0.001), activation=act[i])(x)
 #        x = Dropout(dp[i])(x)
 #        x = GaussianNoise(gauss_std[i])(x)  
     
@@ -102,7 +103,7 @@ def load_or_restore_model(checkpoint_dir, input_dim, num_hidden_layers, num_unit
         print("Restoring from", latest_checkpoint)
         return load_model(latest_checkpoint, custom_objects={'qloss':qloss})
     print("Creating a new model")
-    return get_compiled_model(input_dim, num_hidden_layers, num_units, act, dp=None, gauss_std=None)
+    return get_compiled_model(input_dim, num_hidden_layers, num_units, act, dp, gauss_std)
 
 
 def qloss(y_true, y_pred):
