@@ -63,7 +63,6 @@ def main():
     df_test_raw  = (pd.read_hdf(inputtest).loc[:,kinrho+variables])#.sample(1000, random_state=100).reset_index(drop=True)
     
     # comments: good performence on smooth distribution, but not suitable for distributions with cutoffs
-    '''
     num_hidden_layers = 5
     num_units = [2000, 1000, 500, 200, 100]
     act = ['tanh','exponential', 'softplus', 'tanh', 'elu']
@@ -75,11 +74,12 @@ def main():
     act = ['tanh','exponential', 'softplus']
     dropout = [0.1, 0.1, 0.1]
     gauss_std = [0.2, 0.2, 0.2]
+    '''
 
     #generate scale parameters
-    scale_file = 'scale_para/data.h5'.format(inputtrain[3:-12])
-#    scale_par = pd.read_hdf(scale_file)
-    scale_par = gen_scale_par(df_train, kinrho+variables, scale_file)
+    scale_file = 'scale_para/data_EB.h5'
+    scale_par = pd.read_hdf(scale_file)
+#    scale_par = gen_scale_par(df_train, kinrho+variables, scale_file)
     #scale data
     df_train = scale(df_train, scale_file=scale_file)
     df_test_raw = scale(df_test_raw, scale_file=scale_file)
@@ -89,7 +89,7 @@ def main():
     run_start = time.time()
 
 #    target = variables[0]
-    for target in variables[1:]:
+    for target in variables[:1]:
 
         train_start = time.time()
         target_raw = target[:target.find('_')] if '_' in target else target
