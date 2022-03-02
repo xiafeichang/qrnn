@@ -50,7 +50,7 @@ def test(X, model_from, scale_par):
     
 
 def main():
-    variables = ['probeS4','probeR9','probeCovarianceIeIp','probePhiWidth','probeSigmaIeIe','probeEtaWidth']
+    variables = ['probeCovarianceIeIp','probeS4','probeR9','probePhiWidth','probeSigmaIeIe','probeEtaWidth']
     kinrho = ['probePt','probeScEta','probePhi','rho'] 
 
     data_key = 'mc'

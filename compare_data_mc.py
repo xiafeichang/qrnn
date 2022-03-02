@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import matplotlib
 from matplotlib import pyplot as plt
+from matplotlib.gridspec import GridSpec
 
 from qrnn import trainQuantile, predict, scale
 from Corrector import Corrector, applyCorrection
@@ -36,10 +37,44 @@ df_mc['{}_corr'.format(target_raw)] = applyCorrection(models_mc, models_d, X, Y,
 target_scale_par = scale_par.loc[:,target]
 matplotlib.use('agg')
 fig = plt.figure(tight_layout=True)
-plt.hist(df_mc[target]*target_scale_par['sigma']+target_scale_par['mu'], range=(-0.0001, 0.0001), bins=100, density=True, histtype='step', label='MC uncorrected')
-plt.hist(df_mc['{}_corr'.format(target_raw)]*target_scale_par['sigma']+target_scale_par['mu'], range=(-0.0001, 0.0001), bins=100, density=True, histtype='step', label='MC corrected')
-plt.hist(df_data[target], range=(-0.0001, 0.0001), bins=100, density=True, histtype='step', label='data')
-plt.legend()
+gs = GridSpec(3, 1, figure=fig)
+ax1 = fig.add_subplot(gs[:-1, :])
+ax2 = fig.add_subplot(gs[-1, :])
+
+histrange = (-0.0001, 0.0001)
+nbin = 75
+mc_uncorr_n, _, _ = ax1.hist(df_mc[target]*target_scale_par['sigma']+target_scale_par['mu'], range=histrange, bins=nbin, density=True, histtype='step', color='red', label='MC uncorrected')
+mc_corr_n, _, _ = ax1.hist(df_mc['{}_corr'.format(target_raw)]*target_scale_par['sigma']+target_scale_par['mu'], range=histrange, bins=nbin, density=True, histtype='step', color='blue', label='MC corrected')
+
+data_n, bin_edges = np.histogram(df_data[target], range=histrange, bins=nbin, density=True)
+nEvnt = len(df_data)
+x = np.array([])
+xerr = np.array([])
+for i in range(len(data_n)):
+    x = np.append(x, (bin_edges[i+1]+bin_edges[i])/2.)
+    xerr = np.append(xerr, (bin_edges[i+1]-bin_edges[i])/2.)
+data_nerr = np.sqrt(data_n*xerr*2./nEvnt)
+ax1.errorbar(x, data_n, data_nerr, xerr, fmt='.', elinewidth=1., capsize=1., color='black', label='data')
+
+ax1.set_xlim(histrange)
+ax1.set_xticks(np.arange(-0.0001,0.0001,0.00002), labels=[])
+ax1.ticklabel_format(style='sci', scilimits=(-2, 3), axis='y')
+ax1.legend()
+
+ratio_uncorr = mc_uncorr_n / data_n
+ratio_uncorr_err = np.sqrt((mc_uncorr_n*xerr*2./nEvnt) + (mc_uncorr_n**2/data_n)*(xerr*2./nEvnt)) / data_n
+ratio_corr = mc_corr_n / data_n
+ratio_corr_err = np.sqrt((mc_corr_n*xerr*2./nEvnt) + (mc_corr_n**2/data_n)*(xerr*2./nEvnt)) / data_n
+
+ax2.plot(x, np.ones_like(x), 'k-.')
+ax2.errorbar(x, ratio_uncorr, ratio_uncorr_err, xerr, fmt='.', elinewidth=1., capsize=1., color='red')
+ax2.errorbar(x, ratio_corr, ratio_corr_err, xerr, fmt='.', elinewidth=1., capsize=1., color='blue')
+
+ax2.set_xlim(histrange)
+ax2.set_xticks(np.arange(-0.0001,0.0001,0.00002))
+ax2.ticklabel_format(style='sci', scilimits=(-2, 3), axis='both')
+
+plt.title(target)
 fig.savefig('plots/data_mc_dist_{}'.format(target))
 plt.close(fig)
 
