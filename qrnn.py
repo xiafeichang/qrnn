@@ -31,7 +31,8 @@ def trainQuantile(X, Y, qs, num_hidden_layers=1, num_units=None, act=None, qweig
 
     # create a MirroredStrategy
     print('devices: ', tf.config.list_physical_devices('GPU'))
-    strategy = tf.distribute.MirroredStrategy(devices= ["/gpu:0","/gpu:1"],cross_device_ops=tf.distribute.HierarchicalCopyAllReduce())
+#    strategy = tf.distribute.MirroredStrategy(devices= ["/gpu:0","/gpu:1"],cross_device_ops=tf.distribute.HierarchicalCopyAllReduce())
+    strategy = tf.distribute.MirroredStrategy()
     print("Number of devices: {}".format(strategy.num_replicas_in_sync))
 
     with strategy.scope():
@@ -60,7 +61,8 @@ def predict(X, qs, qweights, model_from=None, scale_par=None):
         return qloss(y_true, y_pred, qs, qweights)
     model = load_model(model_from, custom_objects={'custom_loss':custom_loss})
 
-    predY = model.predict(X)
+    with tf.distribute.MirroredStrategy().scope():
+        predY = model.predict(X)
 
     if scale_par is not None: 
         logger.info('target is scaled, now mapping it back!')
@@ -118,7 +120,13 @@ def load_or_restore_model(checkpoint_dir, qs, input_dim, num_hidden_layers, num_
 def qloss(y_true, y_pred, qs, qweights):
     q = np.array(qs)
     qweight = np.array(qweights)
-    e = (y_true - y_pred)
-    return K.mean(K.maximum(q*e, (q-1.)*e)*qweight)
+    e = y_true - y_pred
+    delta = 0.1
+    is_small_e = K.abs(e) < delta
+    small_e = K.square(e) / (2.*delta)
+    big_e = K.abs(e) - delta/2.
+    huber_e = K.sign(e)*tf.where(is_small_e, small_e, big_e) 
+    return K.mean(K.maximum(q*huber_e, (q-1.)*huber_e)*qweight)
+#    return K.mean(K.square(K.maximum(q*huber_e, (q-1.)*huber_e)*qweight))
 
 
