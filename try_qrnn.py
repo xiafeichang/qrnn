@@ -6,7 +6,7 @@ import pandas as pd
 import matplotlib
 from matplotlib import pyplot as plt
 from qrnn import trainQuantile, predict, scale
-from transformer import fit_transformer, transform, inverse_transform
+from transformer import fit_power_transformer, fit_quantile_transformer, transform, inverse_transform
 
 from sklearn import preprocessing 
 import pickle
@@ -81,16 +81,18 @@ def main(options):
     inputtest = 'df_{}_{}_test.h5'.format(data_key, EBEE)
     
     #load dataframe
-    nEvt = 5000000
+    nEvt = 500000
     df_train = (pd.read_hdf(inputtrain).loc[:,kinrho+variables]).sample(nEvt, random_state=100).reset_index(drop=True)
     df_test_raw  = (pd.read_hdf(inputtest).loc[:,kinrho+variables]).sample(nEvt, random_state=100).reset_index(drop=True)
     
     # comments: good performence on smooth distribution, but not suitable for distributions with cutoffs
     num_hidden_layers = 5
-    num_units = [2000, 2000, 2000, 1000, 500]
-    act = ['tanh','exponential', 'softplus', 'tanh', 'elu']
-    dropout = [0.1, 0.1, 0.1, 0.1, 0.1]
-    gauss_std = [0.2, 0.2, 0.2, 0.2, 0.2]
+    num_units = [500, 300, 200, 500, 1000]
+    act = ['tanh','exponential', 'tanh', 'exponential', 'tanh']
+#    num_units = [100 for _ in range(num_hidden_layers)]
+#    act = ['tanh' for _ in range(num_hidden_layers)]
+    dropout = [0.1 for _ in range(num_hidden_layers)]
+    gauss_std = None 
     '''
     num_hidden_layers = 2
     num_units = [2000, 2000]
@@ -108,7 +110,7 @@ def main(options):
 #    except FileNotFoundError:
 #        scale_par = gen_scale_par(df_train, kinrho+variables, scale_file)
     #scale or transform data
-    transformer_file = '{}_{}'.format(data_key, EBEE)
+    transformer_file = 'data_{}'.format(EBEE)
     df_train.loc[:,variables] = transform(df_train.loc[:,variables], transformer_file, variables)
     df_test_raw.loc[:,variables] = transform(df_test_raw.loc[:,variables], transformer_file, variables)
 
@@ -123,28 +125,42 @@ def main(options):
     train_start = time.time()
 
     target = variables[options.ith_var]
-    features = kinrho + variables[:variables.index(target)] 
+#    features = kinrho + variables[:variables.index(target)] 
+    features = kinrho + variables 
+    features.remove(target)
     print('>>>>>>>>> train for variable {} with features {}'.format(target, features))
 
     X = df_train.loc[:,features]
     Y = df_train.loc[:,target]
     
     qs = np.array([0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.99])
-    qweights = np.ones_like(qs)
+#    qweights = np.ones_like(qs)
 #    qweights = compute_qweights(Y, qs)
-#    qweights = 0.25/(qs*np.flip(qs))
+    qweights = 0.25/(qs*np.flip(qs))
     print('quantile loss weights: {}'.format(qweights))
 
-    trainQuantile(X, Y, qs, num_hidden_layers, num_units, act, qweights, dropout, gauss_std, batch_size = 8192, epochs=10, 
-                  checkpoint_dir='ckpt/'+target, save_file = 'combined_models/{}_{}_{}'.format(data_key, EBEE, target))
+    history = trainQuantile(X, Y, qs, num_hidden_layers, num_units, act, qweights, dropout, gauss_std, batch_size = 128, epochs=100, 
+                            checkpoint_dir='ckpt/'+target, save_file = 'combined_models/{}_{}_{}'.format(data_key, EBEE, target))
 
     train_end = time.time()
     print('time spent in training: {} s'.format(train_end-train_start))
     
-    #test
     matplotlib.use('agg')
+    # plot training history
+    history_fig = plt.figure(tight_layout=True)
+    plt.plot(history.history['loss'], label='training')
+    plt.plot(history.history['val_loss'], label='validation')
+    plt.yscale('log')
+    plt.title('Training history')
+    plt.xlabel('epoch')
+    plt.ylabel('loss')
+    plt.legend()
+    history_fig.savefig('plots/training_history_{}_{}_{}.png'.format(data_key, EBEE, target))
+
+    #test
     pT_scale_par = scale_par.loc[:,'probePt']
     pTs = (np.array([25., 30., 35., 40., 45., 50., 60., 150.]) - pT_scale_par['mu'])/pT_scale_par['sigma']
+#    pTs = transform(np.array([25., 30., 35., 40., 45., 50., 60., 150.]), transformer_file, 'probePt')
     for i in range(len(pTs)-1): 
         df_test = df_test_raw.query('probePt>' + str(pTs[i]) + ' and probePt<' + str(pTs[i+1]))
         X_test = df_test.loc[:,features]

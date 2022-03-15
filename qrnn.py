@@ -5,6 +5,7 @@ from keras import backend as K
 from keras.layers import Input, Dense, GaussianNoise, Dropout
 from keras.models import Model, load_model
 from keras import regularizers
+from keras.callbacks import EarlyStopping, ReduceLROnPlateau, TerminateOnNaN
 from tensorflow import keras
 import tensorflow as tf
 
@@ -41,18 +42,21 @@ def trainQuantile(X, Y, qs, num_hidden_layers=1, num_units=None, act=None, qweig
     # save checkpoint every epoch
     callbacks = [keras.callbacks.ModelCheckpoint(filepath=checkpoint_dir + "/ckpt-{epoch}", save_freq="epoch")]
 
-    model.fit(X, 
-              Y, 
-              epochs = epochs, 
-              batch_size = batch_size, 
-              shuffle = True)
+    history = model.fit(X, 
+                        Y, 
+                        epochs = epochs, 
+                        batch_size = batch_size, 
+                        validation_split = 0.1,
+                        callbacks = [EarlyStopping(monitor='val_loss', patience=5, verbose=1),
+                                     ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=3, verbose=1), 
+                                     TerminateOnNaN()],
+                        shuffle = True)
 
 
     if save_file is not None:
         model.save(save_file)
 
-    return 0
-#    return model
+    return history
 
 
 def predict(X, qs, qweights, model_from=None, scale_par=None):
@@ -100,7 +104,7 @@ def get_compiled_model(qs, input_dim, num_hidden_layers, num_units, act, qweight
 
     def custom_loss(y_true, y_pred): 
         return qloss(y_true, y_pred, qs, qweights)
-    model.compile(loss=custom_loss, optimizer='adadelta')
+    model.compile(loss=custom_loss, optimizer = tf.keras.optimizers.Adadelta(learning_rate=1.e-1))
     return model
 
 
@@ -121,12 +125,12 @@ def qloss(y_true, y_pred, qs, qweights):
     q = np.array(qs)
     qweight = np.array(qweights)
     e = y_true - y_pred
-    delta = 0.1
+    delta = 1.e-4
     is_small_e = K.abs(e) < delta
     small_e = K.square(e) / (2.*delta)
     big_e = K.abs(e) - delta/2.
     huber_e = K.sign(e)*tf.where(is_small_e, small_e, big_e) 
     return K.mean(K.maximum(q*huber_e, (q-1.)*huber_e)*qweight)
-#    return K.mean(K.square(K.maximum(q*huber_e, (q-1.)*huber_e)*qweight))
+#    return K.mean(K.pow(K.maximum(q*huber_e, (q-1.)*huber_e)*qweight, 2))
 
 
