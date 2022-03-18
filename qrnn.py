@@ -5,7 +5,7 @@ from keras import backend as K
 from keras.layers import Input, Dense, GaussianNoise, Dropout
 from keras.models import Model, load_model
 from keras import regularizers
-from keras.callbacks import EarlyStopping, ReduceLROnPlateau, TerminateOnNaN
+from keras.callbacks import EarlyStopping, ReduceLROnPlateau, TerminateOnNaN, ModelCheckpoint
 from tensorflow import keras
 import tensorflow as tf
 
@@ -37,19 +37,19 @@ def trainQuantile(X, Y, qs, num_hidden_layers=1, num_units=None, act=None, qweig
     print("Number of devices: {}".format(strategy.num_replicas_in_sync))
 
     with strategy.scope():
-        model = load_or_restore_model(checkpoint_dir, qs, input_dim, num_hidden_layers, num_units, act, qweights, dp, gauss_std)
-
-    # save checkpoint every epoch
-    callbacks = [keras.callbacks.ModelCheckpoint(filepath=checkpoint_dir + "/ckpt-{epoch}", save_freq="epoch")]
+#        model = load_or_restore_model(checkpoint_dir, qs, input_dim, num_hidden_layers, num_units, act, qweights, dp, gauss_std)
+        print('Creating a new model')
+        model = get_compiled_model(qs, input_dim, num_hidden_layers, num_units, act, qweights, dp, gauss_std)
 
     history = model.fit(X, 
                         Y, 
                         epochs = epochs, 
                         batch_size = batch_size, 
                         validation_split = 0.1,
-                        callbacks = [EarlyStopping(monitor='val_loss', patience=5, verbose=1),
-                                     ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=3, verbose=1), 
-                                     TerminateOnNaN()],
+                        callbacks = [EarlyStopping(monitor='val_loss', patience=23, verbose=1),
+                                     ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=10, verbose=1), 
+                                     ModelCheckpoint(filepath=checkpoint_dir + "/ckpt-{epoch}", save_freq="epoch"),
+                                     TerminateOnNaN()], 
                         shuffle = True)
 
 
@@ -94,7 +94,8 @@ def get_compiled_model(qs, input_dim, num_hidden_layers, num_units, act, qweight
     
     for i in range(num_hidden_layers):
         x = Dense(num_units[i], use_bias=True, kernel_initializer='he_normal', bias_initializer='he_normal',
-                  kernel_regularizer=regularizers.l2(0.001), activation=act[i])(x)
+                  kernel_regularizer=regularizers.l2(0.000001), 
+                  activation=act[i])(x)
 #        x = Dropout(dp[i])(x)
 #        x = GaussianNoise(gauss_std[i])(x)  
     
@@ -104,7 +105,7 @@ def get_compiled_model(qs, input_dim, num_hidden_layers, num_units, act, qweight
 
     def custom_loss(y_true, y_pred): 
         return qloss(y_true, y_pred, qs, qweights)
-    model.compile(loss=custom_loss, optimizer = tf.keras.optimizers.Adadelta(learning_rate=1.e-1))
+    model.compile(loss=custom_loss, optimizer = tf.keras.optimizers.SGD(learning_rate=1.e-1))
     return model
 
 
@@ -125,12 +126,27 @@ def qloss(y_true, y_pred, qs, qweights):
     q = np.array(qs)
     qweight = np.array(qweights)
     e = y_true - y_pred
-    delta = 1.e-4
+    huber_e = Hubber(e, delta=1.e-4, signed=True)
+    losses = K.maximum(q*huber_e, (q-1.)*huber_e)*qweight
+    return K.mean(losses)# + 1.*K.std(losses)
+#    return K.mean(positive_log(losses, delta=1.))# + K.std(losses)
+
+def Hubber(e, delta=0.1, signed=False):
     is_small_e = K.abs(e) < delta
     small_e = K.square(e) / (2.*delta)
     big_e = K.abs(e) - delta/2.
-    huber_e = K.sign(e)*tf.where(is_small_e, small_e, big_e) 
-    return K.mean(K.maximum(q*huber_e, (q-1.)*huber_e)*qweight)
-#    return K.mean(K.pow(K.maximum(q*huber_e, (q-1.)*huber_e)*qweight, 2))
+    if signed:
+        return K.sign(e)*tf.where(is_small_e, small_e, big_e)
+    else:
+        return tf.where(is_small_e, small_e, big_e)
+
+def positive_log(x, delta=0.1):
+    is_small_x = x < delta
+    small_x = x / delta
+    big_x = K.log(x) - K.log(delta) + 1.
+    return tf.where(is_small_x, small_x, big_x)
+
+
+
 
 
