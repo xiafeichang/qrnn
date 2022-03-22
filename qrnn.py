@@ -2,7 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 from keras import backend as K
-from keras.layers import Input, Dense, GaussianNoise, Dropout
+from keras.layers import Input, Dense, GaussianNoise, Dropout, concatenate
 from keras.models import Model, load_model
 from keras import regularizers
 from keras.callbacks import EarlyStopping, ReduceLROnPlateau, TerminateOnNaN, ModelCheckpoint
@@ -91,17 +91,34 @@ def get_compiled_model(qs, input_dim, num_hidden_layers, num_units, act, qweight
     inpt = Input((input_dim,), name='inpt')
 
     x = inpt
-    
-    for i in range(num_hidden_layers):
-        x = Dense(num_units[i], use_bias=True, kernel_initializer='he_normal', bias_initializer='he_normal',
-                  kernel_regularizer=regularizers.l2(0.000001), 
-                  activation=act[i])(x)
-#        x = Dropout(dp[i])(x)
-#        x = GaussianNoise(gauss_std[i])(x)  
-    
-    x = Dense(21, activation=None, use_bias=True, kernel_initializer='he_normal', bias_initializer='he_normal')(x)
+    # first layer to be fully connected 
+    x = Dense(num_units[0], use_bias=True, kernel_initializer='he_normal', bias_initializer='he_normal',
+              kernel_regularizer=regularizers.l2(0.000001), 
+              activation=act[0])(x)
 
-    model = Model(inpt, x)
+    # in following hidden layers, fully connected within one quantile, isolated between quantiles
+    xs = []
+    for j in range(len(qs)): 
+        xs.append(
+                  Dense(num_units[1], use_bias=True, kernel_initializer='he_normal', bias_initializer='he_normal',
+                        kernel_regularizer=regularizers.l2(0.000001), 
+                        activation=act[1])(x)
+                 )
+    
+    for i in range(1,num_hidden_layers):
+        for j in range(len(qs)):
+            xs[j] = Dense(num_units[i], use_bias=True, kernel_initializer='he_normal', bias_initializer='he_normal',
+                          kernel_regularizer=regularizers.l2(0.000001), 
+                          activation=act[i])(xs[j])
+#            xs[j] = Dropout(dp[i])(xs[j])
+#            xs[j] = GaussianNoise(gauss_std[i])(xs[j])  
+    
+    # output layer
+    for j in range(len(qs)): 
+        xs[j] = Dense(1, activation=None, use_bias=True, kernel_initializer='he_normal', bias_initializer='he_normal')(xs[j])
+    output = concatenate(xs)
+
+    model = Model(inpt, output)
 
     def custom_loss(y_true, y_pred): 
         return qloss(y_true, y_pred, qs, qweights)
