@@ -13,7 +13,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def trainQuantile(X, Y, qs, num_hidden_layers=1, num_units=None, act=None, qweights=None, dp=None, gauss_std=None, batch_size=64, epochs=10, checkpoint_dir='./ckpt', save_file=None):
+def trainQuantile(X, Y, qs, qweights=None, num_hidden_layers=3, num_units=None, act=None, num_connected_layers=1, l2lam=1.e-3, opt='SGD', lr=0.1, dp_on=False, dp=None, gauss_std=None, batch_size=64, epochs=10, checkpoint_dir='./ckpt', save_file=None, evaluate_data=None, model_plot=None):
 
     input_dim = len(X.keys())
     
@@ -32,22 +32,21 @@ def trainQuantile(X, Y, qs, num_hidden_layers=1, num_units=None, act=None, qweig
 
     # create a MirroredStrategy
     print('devices: ', tf.config.list_physical_devices('GPU'))
-#    strategy = tf.distribute.MirroredStrategy(devices= ["/gpu:0","/gpu:1"],cross_device_ops=tf.distribute.HierarchicalCopyAllReduce())
     strategy = tf.distribute.MirroredStrategy()
     print("Number of devices: {}".format(strategy.num_replicas_in_sync))
 
     with strategy.scope():
 #        model = load_or_restore_model(checkpoint_dir, qs, input_dim, num_hidden_layers, num_units, act, qweights, dp, gauss_std)
         print('Creating a new model')
-        model = get_compiled_model(qs, input_dim, num_hidden_layers, num_units, act, qweights, dp, gauss_std)
+        model = get_compiled_model(qs, qweights, input_dim, num_hidden_layers, num_units, act, num_connected_layers, l2lam, opt, lr, dp_on, dp, gauss_std)
 
     history = model.fit(X, 
                         Y, 
                         epochs = epochs, 
                         batch_size = batch_size, 
                         validation_split = 0.1,
-                        callbacks = [EarlyStopping(monitor='val_loss', patience=23, verbose=1),
-                                     ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=10, verbose=1), 
+                        callbacks = [EarlyStopping(monitor='val_loss', patience=15, verbose=1),
+                                     ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=6, verbose=1), 
                                      ModelCheckpoint(filepath=checkpoint_dir + "/ckpt-{epoch}", save_freq="epoch"),
                                      TerminateOnNaN()], 
                         shuffle = True)
@@ -56,7 +55,14 @@ def trainQuantile(X, Y, qs, num_hidden_layers=1, num_units=None, act=None, qweig
     if save_file is not None:
         model.save(save_file)
 
-    return history
+    eval_results = None
+    if evaluate_data is not None:
+        eval_results = model.evaluate(evaluate_data[0], evaluate_data[1], batch_size=batch_size)
+
+    if model_plot is not None:
+        keras.utils.plot_model(model, to_file=model_plot, show_shapes=True)
+
+    return history, eval_results
 
 
 def predict(X, qs, qweights, model_from=None, scale_par=None):
@@ -86,47 +92,94 @@ def scale(df, scale_file):
     return df_scaled
 
 
-def get_compiled_model(qs, input_dim, num_hidden_layers, num_units, act, qweights, dp=None, gauss_std=None):
+def get_compiled_model(qs, qweights, input_dim, num_hidden_layers, num_units, act, num_connected_layers=1, l2lam=1.e-3, opt='SGD', lr=0.1, dp_on=False, dp=None, gauss_std=None):
     
     inpt = Input((input_dim,), name='inpt')
 
     x = inpt
-    # first layer to be fully connected 
-    x = Dense(num_units[0], use_bias=True, kernel_initializer='he_normal', bias_initializer='he_normal',
-              kernel_regularizer=regularizers.l2(0.000001), 
-              activation=act[0])(x)
-
-    # in following hidden layers, fully connected within one quantile, isolated between quantiles
-    xs = []
-    for j in range(len(qs)): 
-        xs.append(
-                  Dense(num_units[1], use_bias=True, kernel_initializer='he_normal', bias_initializer='he_normal',
-                        kernel_regularizer=regularizers.l2(0.000001), 
-                        activation=act[1])(x)
-                 )
     
-    for i in range(1,num_hidden_layers):
-        for j in range(len(qs)):
-            xs[j] = Dense(num_units[i], use_bias=True, kernel_initializer='he_normal', bias_initializer='he_normal',
-                          kernel_regularizer=regularizers.l2(0.000001), 
-                          activation=act[i])(xs[j])
-#            xs[j] = Dropout(dp[i])(xs[j])
-#            xs[j] = GaussianNoise(gauss_std[i])(xs[j])  
+    if dp_on:
+        for i in range(num_connected_layers): # fully connected layers
+            x = Dense(num_units[i], use_bias=True, kernel_initializer='he_normal', bias_initializer='he_normal',
+                      kernel_regularizer=regularizers.l2(l2lam), 
+                      activation=act[i])(x)
+            x = Dropout(dp[i])(x)
+    
+        if num_hidden_layers > num_connected_layers: # in following hidden layers, fully connected within one quantile, isolated between quantiles
+            xs = []
+            for j in range(len(qs)): 
+                xs.append(Dense(num_units[num_connected_layers], use_bias=True, kernel_initializer='he_normal', bias_initializer='he_normal',
+                                kernel_regularizer=regularizers.l2(l2lam), 
+                                activation=act[num_connected_layers])(x))
+                xs[j] = Dropout(dp[num_connected_layers])(xs[j])
+
+            if num_hidden_layers > num_connected_layers + 1:
+                for i in range(num_connected_layers+1,num_hidden_layers):
+                    for j in range(len(qs)):
+                        xs[j] = Dense(num_units[i], use_bias=True, kernel_initializer='he_normal', bias_initializer='he_normal',
+                                      kernel_regularizer=regularizers.l2(l2lam), 
+                                      activation=act[i])(xs[j])
+                        xs[j] = Dropout(dp[i])(xs[j])
+#                        xs[j] = GaussianNoise(gauss_std[i])(xs[j])  
+    else:
+        for i in range(num_connected_layers): 
+            x = Dense(num_units[i], use_bias=True, kernel_initializer='he_normal', bias_initializer='he_normal',
+                      kernel_regularizer=regularizers.l2(l2lam), 
+                      activation=act[i])(x)
+    
+        if num_hidden_layers > num_connected_layers: 
+            xs = []
+            for j in range(len(qs)): 
+                xs.append(Dense(num_units[num_connected_layers], use_bias=True, kernel_initializer='he_normal', bias_initializer='he_normal',
+                                kernel_regularizer=regularizers.l2(l2lam), 
+                                activation=act[num_connected_layers])(x))
+
+            if num_hidden_layers > num_connected_layers + 1:
+                for i in range(num_connected_layers+1,num_hidden_layers):
+                    for j in range(len(qs)):
+                        xs[j] = Dense(num_units[i], use_bias=True, kernel_initializer='he_normal', bias_initializer='he_normal',
+                                      kernel_regularizer=regularizers.l2(l2lam), 
+                                      activation=act[i])(xs[j])
+
     
     # output layer
-    for j in range(len(qs)): 
-        xs[j] = Dense(1, activation=None, use_bias=True, kernel_initializer='he_normal', bias_initializer='he_normal')(xs[j])
-    output = concatenate(xs)
+    try: 
+        for j in range(len(qs)): 
+            xs[j] = Dense(1, activation=None, use_bias=True, kernel_initializer='he_normal', bias_initializer='he_normal')(xs[j])
+        output = concatenate(xs)
+    except NameError:
+        output = Dense(len(qs), activation=None, use_bias=True, kernel_initializer='he_normal', bias_initializer='he_normal')(x)
 
     model = Model(inpt, output)
 
+    # choose optimizer
+    if opt.lower() == 'rmsprop':
+        optimizer = tf.keras.optimizers.RMSprop(learning_rate=lr)
+    elif opt.lower() == 'adam':
+        optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
+    elif opt.lower() == 'adadelta':
+        optimizer = tf.keras.optimizers.Adadelta(learning_rate=lr)
+    elif opt.lower() == 'adagrad':
+        optimizer = tf.keras.optimizers.Adagrad(learning_rate=lr)
+    elif opt.lower() == 'adamax':
+        optimizer = tf.keras.optimizers.Adamax(learning_rate=lr)
+    elif opt.lower() == 'nadam':
+        optimizer = tf.keras.optimizers.Nadam(learning_rate=lr)
+    elif opt.lower() == 'ftrl':
+        optimizer = tf.keras.optimizers.Ftrl(learning_rate=lr)
+    else:
+        optimizer = tf.keras.optimizers.SGD(learning_rate=lr)
+    print('compile model with optimizer: ', optimizer)
+
     def custom_loss(y_true, y_pred): 
         return qloss(y_true, y_pred, qs, qweights)
-    model.compile(loss=custom_loss, optimizer = tf.keras.optimizers.SGD(learning_rate=1.e-1))
+    model.compile(loss=custom_loss, optimizer=optimizer)
+#    model.summary()
+
     return model
 
 
-def load_or_restore_model(checkpoint_dir, qs, input_dim, num_hidden_layers, num_units, act, qweights, dp=None, gauss_std=None):
+def load_or_restore_model(checkpoint_dir, qs, qweights, input_dim, num_hidden_layers, num_units, act, num_connected_layers=1, l2lam=1.e-3, opt='SGD', lr=0.1, dp_on=False, dp=None, gauss_std=None):
 
     checkpoints = [checkpoint_dir + "/" + name for name in os.listdir(checkpoint_dir)]
     if checkpoints:
@@ -136,7 +189,7 @@ def load_or_restore_model(checkpoint_dir, qs, input_dim, num_hidden_layers, num_
             return qloss(y_true, y_pred, qs, qweights)
         return load_model(latest_checkpoint, custom_objects={'custom_loss':custom_loss})
     print("Creating a new model")
-    return get_compiled_model(qs, input_dim, num_hidden_layers, num_units, act, qweights, dp, gauss_std)
+    return get_compiled_model(qs, qweights, input_dim, num_hidden_layers, num_units, act, num_connected_layers, l2lam, opt, lr, dp_on, dp, gauss_std)
 
 
 def qloss(y_true, y_pred, qs, qweights):
@@ -145,8 +198,7 @@ def qloss(y_true, y_pred, qs, qweights):
     e = y_true - y_pred
     huber_e = Hubber(e, delta=1.e-4, signed=True)
     losses = K.maximum(q*huber_e, (q-1.)*huber_e)*qweight
-    return K.mean(losses)# + 1.*K.std(losses)
-#    return K.mean(positive_log(losses, delta=1.))# + K.std(losses)
+    return K.mean(losses)
 
 def Hubber(e, delta=0.1, signed=False):
     is_small_e = K.abs(e) < delta
@@ -156,12 +208,6 @@ def Hubber(e, delta=0.1, signed=False):
         return K.sign(e)*tf.where(is_small_e, small_e, big_e)
     else:
         return tf.where(is_small_e, small_e, big_e)
-
-def positive_log(x, delta=0.1):
-    is_small_x = x < delta
-    small_x = x / delta
-    big_x = K.log(x) - K.log(delta) + 1.
-    return tf.where(is_small_x, small_x, big_x)
 
 
 
