@@ -21,4 +21,8 @@ dependencies:
   - pandas
   - pytables
   - tensorflow
+  - tensorflow-gpu
   - keras
+  - keras-tuner
+  - bayesian-optimization
+  - pydot
