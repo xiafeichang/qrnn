@@ -24,41 +24,34 @@ class qrnnHyperModel(kt.HyperModel):
         qweights = self.qweights
         input_dim = self.input_dim
         
-        # for test
-#        num_connected_layers = 1
-#        num_hidden_layers = 5
-#        l2lam = 1.e-5
-#        opt = 'RMSprop'
-#        lr = hp.Float('learning_rate', 1.e-3, 1., sampling='log')
-#        dp_on = False
-#        num_units = [10 for _ in range(num_hidden_layers)]
-#        act = ['tanh' for _ in range(num_hidden_layers)]
-#        dp = [0.1 for _ in range(num_hidden_layers)]
-
-        num_connected_layers = hp.Int('num_connected_layers', 1, 3)
-        num_hidden_layers = num_connected_layers + hp.Int('num_disconnected_layers', 2, 5)
-        l2lam = hp.Float('l2_lambda', 1.e-7, 1.e-2, sampling='log', default=1.e-4)
+        num_connected_layers = hp.Int('num_connected_layers', 1, 5)
+        num_hidden_layers = num_connected_layers + hp.Int('num_isolated_layers', 0, 5, default=2)
+        l2lam = hp.Float('l2_lambda', 1.e-8, 1.e-2, sampling='log', default=1.e-4)
         opt = hp.Choice('optimizer', ['RMSprop','Adam','Adadelta','SGD'])
-        lr = hp.Float('learning_rate', 1.e-3, 1., sampling='log', default=1.)
+        lr = hp.Float('learning_rate', 1.e-3, 1.e1, sampling='log', default=1.)
         dp_on = hp.Boolean('dropout', default=False)
 
-        num_units = []
-        act = []
-        dp = []
-        for i in range(num_connected_layers):
-            num_units.append(hp.Int(f'units_{i}', 500, 2000, 150))
-            act.append(hp.Choice(f'activation_{i}', ['relu', 'tanh']))
-            dp.append(hp.Float(f'dropout_{i}', 0.05, 0.3, 0.05))
-        for i in range(num_connected_layers, num_hidden_layers):
-            num_units.append(hp.Int(f'units_{i}', 5, 50, 5))
-            act.append(hp.Choice(f'activation_{i}', ['relu', 'tanh']))
-            dp.append(hp.Float(f'dropout_{i}', 0.05, 0.3, 0.05))
+        num_units = [hp.Int(f'units_{i}', 5, 625, sampling='log') for i in range(num_hidden_layers)]
+        act = [hp.Choice(f'activation_{i}', ['relu', 'tanh']) for i in range(num_hidden_layers)]
 
-        return get_compiled_model(qs, qweights, input_dim, num_hidden_layers, num_units, act, num_connected_layers, l2lam, opt, lr, dp_on, dp)
+        if dp_on:
+            dp = [hp.Float(f'dropout_{i}', 0.05, 0.3, 0.05) for i in range(num_hidden_layers)]
+        else:
+            dp = []
+        
+        # create a MirroredStrategy
+        print('devices: ', tf.config.list_physical_devices('GPU'))
+        strategy = tf.distribute.MirroredStrategy()
+    
+        with strategy.scope():
+            model = get_compiled_model(qs, qweights, input_dim, num_hidden_layers, num_units, act, num_connected_layers, l2lam, opt, lr, dp_on, dp)
+
+        return model 
 
     def fit(self, hp, model, *args, **kwargs): 
+        batch_size = pow(2, hp.Int('bacth_size_pow', 5, 17, default=10))
         return model.fit(*args,
-                         batch_size = pow(2, hp.Int('bacth_size_pow', 5, 17, default=10))
+                         batch_size = batch_size, 
                          **kwargs,
                         )
 
@@ -87,7 +80,7 @@ def main(options):
     variables = ['probeS4','probeR9','probeCovarianceIeIp','probePhiWidth','probeSigmaIeIe','probeEtaWidth']
     kinrho = ['probePt','probeScEta','probePhi','rho'] 
 
-    data_key = 'mc'
+    data_key = 'data'
     EBEE = 'EB'
       
     inputtrain = 'df_{}_{}_train.h5'.format(data_key, EBEE)
@@ -96,21 +89,19 @@ def main(options):
     #load dataframe
     nEvt = 500000
     df_train = (pd.read_hdf(inputtrain).loc[:,kinrho+variables]).sample(nEvt, random_state=100).reset_index(drop=True)
-#    df_test_raw  = (pd.read_hdf(inputtest).loc[:,kinrho+variables]).sample(nEvt, random_state=100).reset_index(drop=True)
+    df_val = (pd.read_hdf(inputtest).loc[:,kinrho+variables]).sample(int(nEvt*0.1), random_state=100).reset_index(drop=True)
     
     #scale or transform data
-    scale_file = 'scale_para/data_{}.h5'.format(EBEE)
-    scale_par = pd.read_hdf(scale_file)
-
     transformer_file = 'data_{}'.format(EBEE)
     df_train.loc[:,variables] = transform(df_train.loc[:,variables], transformer_file, variables)
-#    df_test_raw.loc[:,variables] = transform(df_test_raw.loc[:,variables], transformer_file, variables)
+    df_val.loc[:,variables] = transform(df_val.loc[:,variables], transformer_file, variables)
 
+    scale_file = 'scale_para/data_{}.h5'.format(EBEE)
     df_train.loc[:,kinrho] = scale(df_train.loc[:,kinrho], scale_file=scale_file)
-#    df_test_raw.loc[:,kinrho] = scale(df_test_raw.loc[:,kinrho], scale_file=scale_file)
+    df_val.loc[:,kinrho] = scale(df_val.loc[:,kinrho], scale_file=scale_file)
 
     print(df_train)
-#    print(df_test_raw)
+    print(df_val)
 
     target = variables[options.ith_var]
     features = kinrho 
@@ -118,8 +109,8 @@ def main(options):
 
     X = df_train.loc[:,features]
     Y = df_train.loc[:,target]
-#    X_test_raw = df_test_raw.loc[:,features]
-#    Y_test_raw = df_test_raw.loc[:,target]
+    X_val = df_val.loc[:,features]
+    Y_val = df_val.loc[:,target]
 
     
     qs = np.array([0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.99])
@@ -135,14 +126,15 @@ def main(options):
         max_trials = 30,
         seed = 100,
         directory = 'bayesOpt',
-        project_name = '{}_{}_{}'.format(data_key, EBEE, target)
+        project_name = '{}_{}_{}'.format(data_key, EBEE, target),
+#        project_name = '{}_{}_test'.format(data_key, EBEE), # for test
         )
     
     search_start = time.time()
     tuner.search(
         X, Y,
         epochs = 1000,
-        validation_split = 0.1,  
+        validation_data = (X_val, Y_val),  
         callbacks = [
             EarlyStopping(monitor='val_loss', patience=15, verbose=1),
             ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=6, verbose=1), 
