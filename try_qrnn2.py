@@ -90,6 +90,9 @@ def main(options):
     nEvt = 1000000
     df_train = (pd.read_hdf(inputtrain).loc[:,kinrho+variables]).sample(nEvt, random_state=100).reset_index(drop=True)
     df_test_raw  = (pd.read_hdf(inputtest).loc[:,kinrho+variables]).sample(nEvt, random_state=100).reset_index(drop=True)
+
+    print(df_train.mean())
+    print(df_train.std())
     
     # comments: good performence on smooth distribution, but not suitable for distributions with cutoffs
     '''
@@ -101,9 +104,9 @@ def main(options):
     dropout = [0.1, 0.1, 0.1, 0.1, 0.1]
     gauss_std = [0.2, 0.2, 0.2, 0.2, 0.2]
     '''
-    num_hidden_layers = 2
-    num_units = [200, 200]
-    act = ['relu', 'relu']
+    num_hidden_layers = 10
+    num_units = [100 for _ in range(num_hidden_layers)]
+    act = ['elu' for _ in range(num_hidden_layers)]
     dropout = [0.1, 0.1]
     gauss_std = [0.3, 0.3]
 
@@ -116,8 +119,8 @@ def main(options):
     df_train.loc[:,kinrho] = scale(df_train.loc[:,kinrho], scale_file=scale_file)
     df_test_raw.loc[:,kinrho] = scale(df_test_raw.loc[:,kinrho], scale_file=scale_file)
 
-    print(df_train)
-    print(df_test_raw)
+    print(df_train.mean())
+    print(df_train.std())
     '''
     scale_file = 'scale_para/data_{}.h5'.format(EBEE)
     try: 
@@ -151,7 +154,7 @@ def main(options):
 
     history = trainQuantile(
         X, Y, qs, num_hidden_layers, num_units, act, qweights, dropout, gauss_std, 
-        batch_size = 128, epochs=1000, 
+        batch_size = 1024, epochs=1000, 
 #        checkpoint_dir='ckpt/'+target, 
         save_file = 'combined_models/{}_{}_{}'.format(data_key, EBEE, target),
         )
@@ -171,6 +174,7 @@ def main(options):
     plt.legend()
     history_fig.savefig('plots/training_history_{}_{}_{}.png'.format(data_key, EBEE, target))
 
+    '''
     #test
     target_scale_par = scale_par.loc[:,target]
     pT_scale_par = scale_par.loc[:,'probePt']
@@ -197,6 +201,7 @@ def main(options):
     loss_mean = np.mean(loss, axis=0)
     loss_std = np.std(loss, axis=0)
     print('mean: {}\nstd: {}'.format(loss_mean,loss_std))
+    '''
 
  
 

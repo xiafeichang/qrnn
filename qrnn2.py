@@ -36,8 +36,8 @@ def trainQuantile(X, Y, qs, num_hidden_layers=1, num_units=None, act=None, qweig
         batch_size = batch_size, 
         validation_split = 0.1,
         callbacks = [
-            EarlyStopping(monitor='val_loss', patience=10, verbose=1),
-            ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=4, verbose=1), 
+            EarlyStopping(monitor='val_loss', patience=5, min_delta=0.00005, verbose=1),
+            ReduceLROnPlateau(monitor='val_loss', factor=0.1, min_delta=0.001, patience=3, verbose=1), 
             TerminateOnNaN()
             ], 
         shuffle = True,
@@ -91,10 +91,10 @@ def get_compiled_model(qs, input_dim, num_hidden_layers, num_units, act, qweight
             kernel_regularizer=regularizers.l2(1.e-3), 
             activation=act[i],
             )(x)
-        x = Dropout(dp[i])(x)
-        x = GaussianNoise(gauss_std[i])(x)  
+#        x = Dropout(dp[i])(x)
+#        x = GaussianNoise(gauss_std[i])(x)  
     
-    x = Dense(len(qs), activation=None, use_bias=True, kernel_initializer='he_normal', bias_initializer='he_normal')(x)
+    x = Dense(len(qs), activation='linear', use_bias=True, kernel_initializer=None, bias_initializer='he_normal')(x)
 
     model = Model(inpt, x)
 
@@ -122,7 +122,7 @@ def load_or_restore_model(checkpoint_dir, qs, input_dim, num_hidden_layers, num_
 def qloss(y_true, y_pred, qs, qweights):
     q = np.array(qs)
     qweight = np.array(qweights)
-    e = (y_true - y_pred)
+    e = -(y_true - y_pred)
     return K.mean(K.maximum(q*e, (q-1.)*e)*qweight)
 '''
 def qloss(y_true, y_pred, qs, qweights):
