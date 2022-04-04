@@ -1,6 +1,6 @@
 jobqueue:
   slurm:
-    cores: 21
-    memory: 63GB
-    jobs: 21
-    walltime: 00:30:00
+    cores: 1
+    memory: 3GB
+    jobs: 6
+    walltime: 12:00:00

@@ -52,46 +52,26 @@ df['{}_pred'.format(target_raw)] = predict(X, qs, qweights, model_from)
 target_scale_par = scale_par.loc[:,target]
 matplotlib.use('agg')
 fig = plt.figure(tight_layout=True)
-gs = GridSpec(3, 1, figure=fig)
-ax1 = fig.add_subplot(gs[:-1, :])
-ax2 = fig.add_subplot(gs[-1, :])
 
 histrange = (-4., 4.)
 nbin = 75
 
-#mc_uncorr_n, _, _ = ax1.hist(inverse_transform(df_mc[target], transformer_file, target), range=histrange, bins=nbin, density=True, histtype='step', color='red', label='MC uncorrected')
-#pred_n, _, _ = ax1.hist(inverse_transform(df_mc['{}_corr'.format(target_raw)], transformer_file, target), range=histrange, bins=nbin, density=True, histtype='step', color='blue', label='MC corrected')
-#data_n, bin_edges = np.histogram(inverse_transform(df[target], transformer_file, target), range=histrange, bins=nbin, density=True)
+pTs_raw = np.arange(25., 55., 1.5)
+pTs = (pTs_raw - scale_par['probePt']['mu'])/scale_par['probePt']['sigma']
+etas_raw = np.arange(-1.45, 1.45, 0.15)
+etas = (etas_raw - scale_par['probeScEta']['mu'])/scale_par['probeScEta']['sigma']
+ith = 1
+df_binned = df.query('probePt > '+str(pTs[ith])+' and probePt < ' + str(pTs[ith+1]))
 
-pred_n, _, _ = ax1.hist(df['{}_pred'.format(target_raw)], range=histrange, bins=nbin, density=True, histtype='step', color='blue', label='predicted')
-data_n, bin_edges = np.histogram(df[target], range=histrange, bins=nbin, density=True)
+plt.hist(df_binned['{}_pred'.format(target_raw)], range=histrange, bins=nbin, density=True, histtype='step', label=f'pT bin {ith}')
 
-x = np.array([])
-xerr = np.array([])
-for i in range(len(data_n)):
-    x = np.append(x, (bin_edges[i+1]+bin_edges[i])/2.)
-    xerr = np.append(xerr, (bin_edges[i+1]-bin_edges[i])/2.)
-data_nerr = np.sqrt(data_n*xerr*2./nEvnt)
-ax1.errorbar(x, data_n, data_nerr, xerr, fmt='.', elinewidth=1., capsize=1., color='black', label='true')
+ith = 10
+df_binned = df.query('probePt > '+str(pTs[ith])+' and probePt < ' + str(pTs[ith+1]))
 
-xticks = np.linspace(histrange[0],histrange[1],10)
-ax1.set_xlim(histrange)
-ax1.set_xticks(xticks, labels=[])
-ax1.ticklabel_format(style='sci', scilimits=(-2, 3), axis='y')
-ax1.legend()
+plt.hist(df_binned['{}_pred'.format(target_raw)], range=histrange, bins=nbin, density=True, histtype='step', label=f'pT bin {ith}')
 
-ratio = pred_n / data_n
-ratio_err = np.sqrt((pred_n*xerr*2./nEvnt) + (pred_n**2/data_n)*(xerr*2./nEvnt)) / data_n
-
-ax2.plot(x, np.ones_like(x), 'k-.')
-ax2.errorbar(x, ratio, ratio_err, xerr, fmt='.', elinewidth=1., capsize=1., color='blue')
-
-ax2.set_xlim(histrange)
-ax2.set_ylim(0., 3.)
-ax2.set_xticks(xticks)
-ax2.ticklabel_format(style='sci', scilimits=(-2, 3), axis='both')
-
-plt.title(target)
+plt.xlabel(target)
+plt.legend()
 fig.savefig('plots/check_pred_{}_{}_{}'.format(data_key, EBEE, target))
 plt.close(fig)
 

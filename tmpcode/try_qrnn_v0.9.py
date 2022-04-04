@@ -56,17 +56,33 @@ def main(options):
     variables = ['probeS4','probeR9','probeCovarianceIeIp','probePhiWidth','probeSigmaIeIe','probeEtaWidth']
     kinrho = ['probePt','probeScEta','probePhi','rho'] 
 
-    data_key = 'mc'
+    data_key = 'data'
     EBEE = 'EB'
       
     inputtrain = 'df_{}_{}_train.h5'.format(data_key, EBEE)
     inputtest = 'df_{}_{}_test.h5'.format(data_key, EBEE)
     
     #load dataframe
-    nEvt = 500000
+    nEvt = 1000000
     df_train = (pd.read_hdf(inputtrain).loc[:,kinrho+variables]).sample(nEvt, random_state=100).reset_index(drop=True)
     df_test_raw  = (pd.read_hdf(inputtest).loc[:,kinrho+variables]).sample(nEvt, random_state=100).reset_index(drop=True)
     
+    # comments: good performence on smooth distribution, but not suitable for distributions with cutoffs
+    num_hidden_layers = 5
+#    num_units = [2000, 1000, 600, 2000, 2000]
+#    act = ['tanh','exponential', 'tanh', 'exponential', 'tanh']
+    num_units = [2000 for _ in range(num_hidden_layers)]
+    act = ['tanh' for _ in range(num_hidden_layers)]
+    dropout = [0.1 for _ in range(num_hidden_layers)]
+    gauss_std = None 
+    '''
+    num_hidden_layers = 2
+    num_units = [2000, 2000]
+    act = ['tanh', 'softplus']
+    dropout = [0.1, 0.1]
+    gauss_std = [0.3, 0.3]
+    '''
+
     #get or generate scale parameters
 
     scale_file = 'scale_para/data_{}.h5'.format(EBEE)
@@ -83,63 +99,32 @@ def main(options):
     df_train.loc[:,kinrho] = scale(df_train.loc[:,kinrho], scale_file=scale_file)
     df_test_raw.loc[:,kinrho] = scale(df_test_raw.loc[:,kinrho], scale_file=scale_file)
 
-#    print(df_train)
-#    print(df_test_raw)
+    print(df_train)
+    print(df_test_raw)
 
     #train
     
     train_start = time.time()
 
     target = variables[options.ith_var]
-#    features = kinrho + variables[:variables.index(target)] 
-    features = kinrho 
+    features = kinrho + variables[:variables.index(target)] 
+#    features = kinrho + variables 
+#    features.remove(target)
     print('>>>>>>>>> train for variable {} with features {}'.format(target, features))
 
     X = df_train.loc[:,features]
     Y = df_train.loc[:,target]
-#    X_test_raw = df_test_raw.loc[:,features]
-#    Y_test_raw = df_test_raw.loc[:,target]
-
-
+    
     qs = np.array([0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.99])
+#    qweights = np.ones_like(qs)
     qweights = compute_qweights(Y, qs)
+#    qweights = 0.25/(qs*np.flip(qs))
     print('quantile loss weights: {}'.format(qweights))
 
-    batch_size = pow(2, 13)
-#    num_hidden_layers = 5
-#    num_units_from = 50
-#    shrink_rate = 0.8
-#    num_units = [int((num_units_from*shrink_rate**i)/len(qs)) for i in range(num_hidden_layers)]
-#    act = ['tanh' for _ in range(num_hidden_layers)]
-#    dropout = [0.1 for _ in range(num_hidden_layers)]
-#    gauss_std = None 
-
-    num_hidden_layers = 5
-#    num_units = [1000, 800, 500, 200, 100]
-    num_units = [50, 40, 25, 10, 5]
-    act = ['tanh','exponential', 'softplus', 'tanh', 'elu']
-    dropout = [0.1, 0.1, 0.1, 0.1, 0.1]
-    gauss_std = [0.2, 0.2, 0.2, 0.2, 0.2]
-
-
-#    train_dataset = tf.data.Dataset.from_tensor_slices((df_train[:,features], df_train[:,target])).batch(batch_size)
-#    test_dataset = tf.data.Dataset.from_tensor_slices((df_train[:,features], df_train[:,target])).batch(batch_size)
-
-    history, eval_results = trainQuantile(
-        X, Y, 
-        qs, qweights, 
-        num_hidden_layers, num_units, act, 
-        num_connected_layers = num_hidden_layers,
-        l2lam = 1.e-3, 
-        opt = 'Adadelta', lr = 0.5, 
-        batch_size = batch_size, 
-        epochs = 1000, 
-#        checkpoint_dir = 'ckpt/'+target, 
-        save_file = 'models/{}_{}_{}'.format(data_key, EBEE, target), 
-        )
+    history = trainQuantile(X, Y, qs, num_hidden_layers, num_units, act, qweights, dropout, gauss_std, batch_size = pow(2,15), epochs=5000, 
+                            checkpoint_dir='ckpt/'+target, save_file = 'combined_models/{}_{}_{}'.format(data_key, EBEE, target))
 
     train_end = time.time()
-    print('evaluation results: ', eval_results)
     print('time spent in training: {} s'.format(train_end-train_start))
     
     matplotlib.use('agg')
@@ -154,7 +139,6 @@ def main(options):
     plt.legend()
     history_fig.savefig('plots/training_history_{}_{}_{}.png'.format(data_key, EBEE, target))
 
-
     #test
     pT_scale_par = scale_par.loc[:,'probePt']
     pTs = (np.array([25., 30., 35., 40., 45., 50., 60., 150.]) - pT_scale_par['mu'])/pT_scale_par['sigma']
@@ -165,7 +149,7 @@ def main(options):
         Y_test = df_test.loc[:,target]
      
         q_pred, q_pred_err, loss_ = test(X_test, Y_test, qs, qweights, 
-                                         model_from='models/{}_{}_{}'.format(data_key, EBEE, target)
+                                         model_from='combined_models/{}_{}_{}'.format(data_key, EBEE, target)
                                          )#, transformer=(transformer_file, target))
         if i==0:
             loss = loss_ 
@@ -179,7 +163,7 @@ def main(options):
         plt.errorbar(q_pred, qs, xerr=q_pred_err, fmt='.', markersize=7, elinewidth=2, capsize=3, markeredgewidth=2, label='prediction')
         plt.xlabel(target)
         plt.legend()
-        fig.savefig('plots/{}_{}_{}_{}.png'.format(data_key, EBEE, target, str(i)))
+        fig.savefig('plots/combined_{}_{}_{}_{}.png'.format(data_key, EBEE, target, str(i)))
         plt.close(fig)
     
     print(loss.shape)

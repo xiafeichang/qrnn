@@ -130,3 +130,15 @@ dmypy.json
 
 # slurm output 
 *.out
+*.h5
+weighted_dfs/
+ckpt/
+backup_*/
+bayesOpt/
+*models*/
+test/
+plots/
+dask-worker-space
+*para*/
+transformer/*
+*.pkl
