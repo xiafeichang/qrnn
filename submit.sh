@@ -12,6 +12,5 @@
 #python compare_data_mc.py
 #python check_results.py
 #python transform.py
-python weight_to_uniform.py
 #python $1 -i $2
-
+python $1

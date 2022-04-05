@@ -7,8 +7,8 @@ from matplotlib import pyplot as plt
 from matplotlib.gridspec import GridSpec
 
 from qrnn import trainQuantile, predict, scale
-from Corrector import Corrector, applyCorrection
-from transformer import fit_power_transformer, fit_quantile_transformer, transform, inverse_transform
+from mylib.Corrector import Corrector, applyCorrection
+from mylib.transformer import transform, inverse_transform
 
 
 
@@ -21,14 +21,9 @@ nEvnt = 1000000
 df_data = (pd.read_hdf('df_data_{}_test.h5'.format(EBEE))).loc[:,kinrho+variables].sample(nEvnt, random_state=100).reset_index(drop=True)
 df_mc = (pd.read_hdf('df_mc_{}_test.h5'.format(EBEE))).loc[:,kinrho+variables].sample(nEvnt, random_state=100).reset_index(drop=True)
 
-scale_file = 'scale_para/data_{}.h5'.format(EBEE)
-scale_par = pd.read_hdf(scale_file)
 transformer_file = 'data_{}'.format(EBEE)
-df_mc.loc[:,variables] = transform(df_mc.loc[:,variables], transformer_file, variables)
-df_mc.loc[:,kinrho] = scale(df_mc.loc[:,kinrho], scale_file=scale_file)
-
-df_data.loc[:,variables] = transform(df_data.loc[:,variables], transformer_file, variables)
-df_data.loc[:,kinrho] = scale(df_data.loc[:,kinrho], scale_file=scale_file)
+df_mc = transform(df_mc, transformer_file, kinrho+variables)
+df_data = transform(df_data, transformer_file, kinrho+variables)
 
 
 histranges = []
@@ -51,7 +46,6 @@ models_d = 'combined_models/{}_{}_{}'.format('data', EBEE, target)
 df_mc['{}_corr'.format(target_raw)] = applyCorrection(models_mc, models_d, X, Y, diz=False)
  
 
-target_scale_par = scale_par.loc[:,target]
 matplotlib.use('agg')
 fig = plt.figure(tight_layout=True)
 gs = GridSpec(3, 1, figure=fig)
@@ -98,6 +92,6 @@ ax2.set_xticks(xticks)
 ax2.ticklabel_format(style='sci', scilimits=(-2, 3), axis='both')
 
 plt.title(target)
-fig.savefig('plots/data_mc_dist_{}_{}'.format(EBEE, target))
+fig.savefig('plots/check_correction/data_mc_dist_{}_{}'.format(EBEE, target))
 plt.close(fig)
 

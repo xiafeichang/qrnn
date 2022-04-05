@@ -17,7 +17,7 @@
 #python compare_data_mc.py
 #python check_results.py
 #python check_gpu.py
-python $1 -i $2
+python $1 -d $2 -i $3
 #python $1
 
 #for q in 0.01 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 0.99;

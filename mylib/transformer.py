@@ -18,9 +18,14 @@ def showDist(df, variables, title, file_name, nrows, ncols, figsize):
     fig.savefig('plots/transform_{}.png'.format(file_name))
 
 def fit_standard_scaler(df, variables, file_name):
+    try: 
+        sample_weight = np.array(df['ml_weight'])
+    except KeyError:
+        print('No weight found!')
+        sample_weight = None
     for var in variables: 
         transformer = preprocessing.StandardScaler()
-        transformer.fit(np.array(df[var]).reshape(-1,1), sample_weight=np.array(df['ml_weight']))
+        transformer.fit(np.array(df[var]).reshape(-1,1), sample_weight=sample_weight)
         pickle.dump(transformer, gzip.open('transformer/{}_{}.pkl'.format(file_name, var), 'wb'),protocol=pickle.HIGHEST_PROTOCOL)
 
 def fit_quantile_transformer(df, variables, file_name, output_distribution='uniform', random_state=None):
@@ -46,7 +51,10 @@ def transform(df, file_name, variables):
         for var in variables: 
             transformer = pickle.load(gzip.open('transformer/{}_{}.pkl'.format(file_name, var)))
             df_tr[var] = transformer.transform(np.array(df[var]).reshape(-1,1)).flatten()
-        df_tr['ml_weight'] = df['ml_weight']
+        try: 
+            df_tr['ml_weight'] = df['ml_weight']
+        except KeyError:
+            print('No weight found! ')
         return df_tr
 
 def inverse_transform(df, file_name, variables):
@@ -58,7 +66,10 @@ def inverse_transform(df, file_name, variables):
         for var in variables: 
             transformer = pickle.load(gzip.open('transformer/{}_{}.pkl'.format(file_name, var)))
             df_itr[var] = transformer.inverse_transform(np.array(df[var]).reshape(-1,1)).flatten()
-        df_itr['ml_weight'] = df['ml_weight']
+        try: 
+            df_tr['ml_weight'] = df['ml_weight']
+        except KeyError:
+            print('No weight found! ')
         return df_itr
 
 

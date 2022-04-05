@@ -10,7 +10,7 @@ import pickle
 import gzip
 
 from qrnn import trainQuantile, predict, scale
-from transformer import fit_power_transformer, fit_quantile_transformer, transform, inverse_transform
+from mylib.transformer import transform, inverse_transform
 
 
 
@@ -20,12 +20,39 @@ def gen_scale_par(df, variables, scale_file):
     par.to_hdf(scale_file, key='scale_par', mode='w')
     return par
 
+def draw_plot(data_key, EBEE, df, q, x_vars, x_title, x_var_name, target, transformer_file):
+
+    var_pred_mean = np.zeros(len(x_vars)-1)
+    var_true_mean = np.zeros(len(x_vars)-1)
+    x_vars_c = np.zeros(len(x_vars)-1)
+    for i in range(len(x_vars)-1):
+        query_str = x_var_name + ' > ' + str(x_vars[i]) + ' and ' + x_var_name +' < ' + str(x_vars[i+1])
+
+#        var_pred_mean[i] = np.mean(inverse_transform((df.query(query_str))[f'{target}_pred'], transformer_file, target))
+#        var_true_mean[i] = np.mean(inverse_transform((df.query(query_str))[target], transformer_file, target))
+
+        var_pred_mean[i] = np.mean((df.query(query_str))[f'{target}_pred_{q}'])
+        var_true_mean[i] = np.quantile((df.query(query_str))[target], q)
+
+        x_vars_c[i] = ((x_vars[i] + x_vars[i+1])/2.)
+    
+    x_vars_c = inverse_transform(x_vars_c, transformer_file, x_var_name)
+
+    fig = plt.figure(tight_layout=True)
+    plt.plot(x_vars_c, var_pred_mean, label='predicted')
+    plt.plot(x_vars_c, var_true_mean, label='true')
+    plt.xlabel(x_title)
+    plt.ylabel('mean of {}'.format(target))
+    plt.legend()
+    fig.savefig('plots/check_results/{}_{}_{}_{}_{}.png'.format(data_key, EBEE, target, x_var_name, q))
+    plt.close(fig)
+
 def compute_qweights(sr, qs):
     quantiles = np.quantile(sr, qs)
     es = np.array(sr)[:,None] - quantiles
     huber_e = Hubber(es, 1.e-4, signed=True)
     loss = np.maximum(qs*huber_e, (qs-1.)*huber_e)
-    qweights = 1./np.mean(loss, axis=0)
+    qweights = 1./np.average(loss, axis=0, weights=sample_weight)
     return qweights/np.min(qweights)
 
 def Hubber(e, delta=0.1, signed=False):
@@ -55,33 +82,23 @@ def test(X, Y, qs, qweights, model_from, scale_par=None, transformer=None): # tr
 def main(options):
     variables = ['probeS4','probeR9','probeCovarianceIeIp','probePhiWidth','probeSigmaIeIe','probeEtaWidth']
     kinrho = ['probePt','probeScEta','probePhi','rho'] 
+    weight = ['ml_weight']
 
     data_key = 'mc'
     EBEE = 'EB'
       
-    inputtrain = 'df_{}_{}_train.h5'.format(data_key, EBEE)
-    inputtest = 'df_{}_{}_test.h5'.format(data_key, EBEE)
-    
+    inputtrain = 'weighted_dfs/df_{}_{}_train.h5'.format(data_key, EBEE)
+    inputtest = 'weighted_dfs/df_{}_{}_test.h5'.format(data_key, EBEE)
+   
     #load dataframe
-    nEvt = 500000
+    nEvt = 1000000
     df_train = (pd.read_hdf(inputtrain).loc[:,kinrho+variables]).sample(nEvt, random_state=100).reset_index(drop=True)
     df_test_raw  = (pd.read_hdf(inputtest).loc[:,kinrho+variables]).sample(nEvt, random_state=100).reset_index(drop=True)
     
-    #get or generate scale parameters
-
-    scale_file = 'scale_para/data_{}.h5'.format(EBEE)
-#    scale_par = gen_scale_par(df_train, kinrho, scale_file)
-    try: 
-        scale_par = pd.read_hdf(scale_file)
-    except FileNotFoundError:
-        scale_par = gen_scale_par(df_train, kinrho+variables, scale_file)
-    #scale or transform data
+    #transform features and targets
     transformer_file = 'data_{}'.format(EBEE)
-    df_train.loc[:,variables] = transform(df_train.loc[:,variables], transformer_file, variables)
-    df_test_raw.loc[:,variables] = transform(df_test_raw.loc[:,variables], transformer_file, variables)
-
-    df_train.loc[:,kinrho] = scale(df_train.loc[:,kinrho], scale_file=scale_file)
-    df_test_raw.loc[:,kinrho] = scale(df_test_raw.loc[:,kinrho], scale_file=scale_file)
+    df_train = transform(df_train, transformer_file, kinrho+variables)
+    df_test = transform(df_test, transformer_file, kinrho+variables)
 
 #    print(df_train)
 #    print(df_test_raw)
@@ -97,12 +114,13 @@ def main(options):
 
     X = df_train.loc[:,features]
     Y = df_train.loc[:,target]
+    sample_weight = df_train.loc[:,'ml_weight']
 #    X_test_raw = df_test_raw.loc[:,features]
 #    Y_test_raw = df_test_raw.loc[:,target]
 
 
     qs = np.array([0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.99])
-    qweights = compute_qweights(Y, qs)
+    qweights = compute_qweights(Y, qs, sample_weight)
     print('quantile loss weights: {}'.format(qweights))
 
     batch_size = pow(2, 13)
@@ -115,7 +133,6 @@ def main(options):
 #    gauss_std = None 
 
     num_hidden_layers = 5
-#    num_units = [1000, 800, 500, 200, 100]
     num_units = [50, 40, 25, 10, 5]
     act = ['tanh','exponential', 'softplus', 'tanh', 'elu']
     dropout = [0.1, 0.1, 0.1, 0.1, 0.1]
@@ -129,6 +146,7 @@ def main(options):
         X, Y, 
         qs, qweights, 
         num_hidden_layers, num_units, act, 
+        sample_weight = sample_weight,
         num_connected_layers = num_hidden_layers,
         l2lam = 1.e-3, 
         opt = 'Adadelta', lr = 0.5, 
@@ -152,13 +170,39 @@ def main(options):
     plt.xlabel('epoch')
     plt.ylabel('loss')
     plt.legend()
-    history_fig.savefig('plots/training_history_{}_{}_{}.png'.format(data_key, EBEE, target))
+    history_fig.savefig('plots/training_histories/{}_{}_{}.png'.format(data_key, EBEE, target))
+
+
+    # check result
+    X_test = df_test_raw.loc[:,features]
+    Y_test = df_test_raw.loc[:,target]
+    
+    #pTs_raw = np.array([25., 30., 32.5, 35., 37.5, 40., 42.5, 45., 50., 60., 150.])
+    pTs_raw = np.arange(25., 55., 1.5)
+    pTs = transform(pTs_raw, transformer_file, 'probePt')
+    etas_raw = np.arange(-1.45, 1.45, 0.15)
+    etas = transform(etas_raw, transformer_file, 'probeScEta')
+    #rhos_raw = np.array([0., 8., 12., 15., 18., 21., 24., 27., 30., 36., 60.])
+    rhos_raw = np.arange(0., 50., 2.)
+    rhos = transform(rhos_raw, transformer_file, 'rho')
+    phis_raw = np.arange(-3.15, 3.15, 0.3)
+    phis = transform(phis_raw, transformer_file, 'probePhi')
+    
+    matplotlib.use('agg')
+    
+    model_from = 'combined_models/{}_{}_{}'.format(data_key, EBEE, target)
+    for i in range(len(qs)): 
+        df_test['{}_pred_{}'.format(target, qs[i])] = np.array(predict(X_test, qs, qweights, model_from))[:,i]
+     
+        draw_plot(data_key, EBEE, df_test, qs[i], pTs, '$p_T$', 'probePt', target, transformer_file)
+        draw_plot(data_key, EBEE, df_test, qs[i], etas, '$\eta$', 'probeScEta', target, transformer_file)
+        draw_plot(data_key, EBEE, df_test, qs[i], rhos, '$\\rho$', 'rho', target, transformer_file)
+        draw_plot(data_key, EBEE, df_test, qs[i], phis, '$\phi$', 'probePhi', target, transformer_file)
 
 
     #test
     pT_scale_par = scale_par.loc[:,'probePt']
-    pTs = (np.array([25., 30., 35., 40., 45., 50., 60., 150.]) - pT_scale_par['mu'])/pT_scale_par['sigma']
-#    pTs = transform(np.array([25., 30., 35., 40., 45., 50., 60., 150.]), transformer_file, 'probePt')
+    pTs = transform(np.array([25., 30., 35., 40., 45., 50., 60., 150.]), transformer_file, 'probePt')
     for i in range(len(pTs)-1): 
         df_test = df_test_raw.query('probePt>' + str(pTs[i]) + ' and probePt<' + str(pTs[i+1]))
         X_test = df_test.loc[:,features]
@@ -179,7 +223,7 @@ def main(options):
         plt.errorbar(q_pred, qs, xerr=q_pred_err, fmt='.', markersize=7, elinewidth=2, capsize=3, markeredgewidth=2, label='prediction')
         plt.xlabel(target)
         plt.legend()
-        fig.savefig('plots/{}_{}_{}_{}.png'.format(data_key, EBEE, target, str(i)))
+        fig.savefig('plots/old_plots/{}_{}_{}_{}.png'.format(data_key, EBEE, target, str(i)))
         plt.close(fig)
     
     print(loss.shape)

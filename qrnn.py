@@ -47,16 +47,20 @@ def trainQuantile(X, Y, qs, qweights=None, num_hidden_layers=3, num_units=None, 
         print('Creating a new model')
         model = get_compiled_model(qs, qweights, input_dim, num_hidden_layers, num_units, act, num_connected_layers, l2lam, opt, lr, dp_on, dp, gauss_std)
 
-    history = model.fit(X, 
-                        Y, 
-                        epochs = epochs, 
-                        batch_size = batch_size, 
-                        validation_split = 0.1,
-                        callbacks = [EarlyStopping(monitor='val_loss', patience=15, verbose=1),
-                                     ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=6, verbose=1), 
-#                                     ModelCheckpoint(filepath=checkpoint_dir + "/ckpt-{epoch}", save_freq="epoch"),
-                                     TerminateOnNaN()], 
-                        shuffle = True)
+    history = model.fit(
+        X, Y, 
+        sample_weight = sample_weight, 
+        epochs = epochs, 
+        batch_size = batch_size, 
+        validation_split = 0.1,
+        callbacks = [
+            EarlyStopping(monitor='val_loss', patience=15, verbose=1),
+            ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=6, verbose=1), 
+#            ModelCheckpoint(filepath=checkpoint_dir + "/ckpt-{epoch}", save_freq="epoch"),
+            TerminateOnNaN()
+            ], 
+        shuffle = True,
+        )
 
 
     if save_file is not None:
