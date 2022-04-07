@@ -47,12 +47,12 @@ def draw_plot(data_key, EBEE, df, q, x_vars, x_title, x_var_name, target, transf
     fig.savefig('plots/check_results/{}_{}_{}_{}_{}.png'.format(data_key, EBEE, target, x_var_name, q))
     plt.close(fig)
 
-def compute_qweights(sr, qs):
+def compute_qweights(sr, qs, weights=None):
     quantiles = np.quantile(sr, qs)
     es = np.array(sr)[:,None] - quantiles
     huber_e = Hubber(es, 1.e-4, signed=True)
     loss = np.maximum(qs*huber_e, (qs-1.)*huber_e)
-    qweights = 1./np.average(loss, axis=0, weights=sample_weight)
+    qweights = 1./np.average(loss, axis=0, weights=weights)
     return qweights/np.min(qweights)
 
 def Hubber(e, delta=0.1, signed=False):
@@ -84,21 +84,21 @@ def main(options):
     kinrho = ['probePt','probeScEta','probePhi','rho'] 
     weight = ['ml_weight']
 
-    data_key = 'mc'
-    EBEE = 'EB'
-      
+    data_key = options.data_key
+    EBEE = options.EBEE 
+     
     inputtrain = 'weighted_dfs/df_{}_{}_train.h5'.format(data_key, EBEE)
     inputtest = 'weighted_dfs/df_{}_{}_test.h5'.format(data_key, EBEE)
    
     #load dataframe
-    nEvt = 1000000
-    df_train = (pd.read_hdf(inputtrain).loc[:,kinrho+variables]).sample(nEvt, random_state=100).reset_index(drop=True)
-    df_test_raw  = (pd.read_hdf(inputtest).loc[:,kinrho+variables]).sample(nEvt, random_state=100).reset_index(drop=True)
+    nEvt = 3000000
+    df_train = (pd.read_hdf(inputtrain).loc[:,kinrho+variables+weight]).sample(nEvt, random_state=100).reset_index(drop=True)
+    df_test_raw  = (pd.read_hdf(inputtest).loc[:,kinrho+variables+weight]).sample(nEvt, random_state=100).reset_index(drop=True)
     
     #transform features and targets
     transformer_file = 'data_{}'.format(EBEE)
     df_train = transform(df_train, transformer_file, kinrho+variables)
-    df_test = transform(df_test, transformer_file, kinrho+variables)
+    df_test_raw = transform(df_test_raw, transformer_file, kinrho+variables)
 
 #    print(df_train)
 #    print(df_test_raw)
@@ -132,9 +132,11 @@ def main(options):
 #    dropout = [0.1 for _ in range(num_hidden_layers)]
 #    gauss_std = None 
 
-    num_hidden_layers = 5
-    num_units = [50, 40, 25, 10, 5]
-    act = ['tanh','exponential', 'softplus', 'tanh', 'elu']
+    num_hidden_layers = 6
+    num_connected_layers = 3
+    num_units = [30, 25, 30, 25, 20, 15]
+    act = ['tanh' for _ in range(num_hidden_layers)]
+#    act = ['tanh','exponential', 'softplus', 'elu', 'tanh']
     dropout = [0.1, 0.1, 0.1, 0.1, 0.1]
     gauss_std = [0.2, 0.2, 0.2, 0.2, 0.2]
 
@@ -146,8 +148,8 @@ def main(options):
         X, Y, 
         qs, qweights, 
         num_hidden_layers, num_units, act, 
+        num_connected_layers = num_connected_layers,
         sample_weight = sample_weight,
-        num_connected_layers = num_hidden_layers,
         l2lam = 1.e-3, 
         opt = 'Adadelta', lr = 0.5, 
         batch_size = batch_size, 
@@ -192,12 +194,12 @@ def main(options):
     
     model_from = 'combined_models/{}_{}_{}'.format(data_key, EBEE, target)
     for i in range(len(qs)): 
-        df_test['{}_pred_{}'.format(target, qs[i])] = np.array(predict(X_test, qs, qweights, model_from))[:,i]
+        df_test_raw['{}_pred_{}'.format(target, qs[i])] = np.array(predict(X_test, qs, qweights, model_from))[:,i]
      
-        draw_plot(data_key, EBEE, df_test, qs[i], pTs, '$p_T$', 'probePt', target, transformer_file)
-        draw_plot(data_key, EBEE, df_test, qs[i], etas, '$\eta$', 'probeScEta', target, transformer_file)
-        draw_plot(data_key, EBEE, df_test, qs[i], rhos, '$\\rho$', 'rho', target, transformer_file)
-        draw_plot(data_key, EBEE, df_test, qs[i], phis, '$\phi$', 'probePhi', target, transformer_file)
+        draw_plot(data_key, EBEE, df_test_raw, qs[i], pTs, '$p_T$', 'probePt', target, transformer_file)
+        draw_plot(data_key, EBEE, df_test_raw, qs[i], etas, '$\eta$', 'probeScEta', target, transformer_file)
+        draw_plot(data_key, EBEE, df_test_raw, qs[i], rhos, '$\\rho$', 'rho', target, transformer_file)
+        draw_plot(data_key, EBEE, df_test_raw, qs[i], phis, '$\phi$', 'probePhi', target, transformer_file)
 
 
     #test
@@ -238,5 +240,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     requiredArgs = parser.add_argument_group('Required Arguements')
     requiredArgs.add_argument('-i','--ith_var', action='store', type=int, required=True)
+    requiredArgs.add_argument('-d','--data_key', action='store', type=str, required=True)
+    requiredArgs.add_argument('-e','--EBEE', action='store', type=str, required=True)
     options = parser.parse_args()
     main(options)

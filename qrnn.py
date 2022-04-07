@@ -12,8 +12,24 @@ import tensorflow as tf
 import logging
 logger = logging.getLogger(__name__)
 
+# GPU memory setup
+gpus = tf.config.list_physical_devices('GPU')
 
-def trainQuantile(X, Y, qs, qweights=None, num_hidden_layers=3, num_units=None, act=None, num_connected_layers=1, l2lam=1.e-3, opt='SGD', lr=0.1, dp_on=False, dp=None, gauss_std=None, batch_size=64, epochs=10, checkpoint_dir='./ckpt', save_file=None, evaluate_data=None, model_plot=None):
+if gpus:
+  try:
+    # Currently, memory growth needs to be the same across GPUs
+    for gpu in gpus:
+      tf.config.experimental.set_memory_growth(gpu, True)
+    logical_gpus = tf.config.list_logical_devices('GPU')
+    print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+  except RuntimeError as e:
+    # Memory growth must be set before GPUs have been initialized
+    print(e)
+
+
+
+
+def trainQuantile(X, Y, qs, qweights=None, num_hidden_layers=3, num_units=None, act=None, num_connected_layers=1, sample_weight=None, l2lam=1.e-3, opt='SGD', lr=0.1, dp_on=False, dp=None, gauss_std=None, batch_size=64, epochs=10, checkpoint_dir='./ckpt', save_file=None, evaluate_data=None, model_plot=None):
 
     # cleanup
     try:
@@ -193,7 +209,7 @@ def get_compiled_model(qs, qweights, input_dim, num_hidden_layers, num_units, ac
     def custom_loss(y_true, y_pred): 
         return qloss(y_true, y_pred, qs, qweights)
     model.compile(loss=custom_loss, optimizer=optimizer)
-#    model.summary()
+    model.summary()
 
     return model
 
