@@ -8,7 +8,7 @@ from keras import backend as K
 import keras_tuner as kt
 from keras.callbacks import EarlyStopping, ReduceLROnPlateau, TerminateOnNaN, ModelCheckpoint
 
-from transformer import fit_power_transformer, fit_quantile_transformer, transform, inverse_transform
+from mylib.transformer import transform, inverse_transform
 from qrnn import *
 
 
@@ -57,18 +57,19 @@ class qrnnHyperModel(kt.HyperModel):
         qweights = self.qweights
         input_dim = self.input_dim
         
-        num_hidden_layers = 5
+        num_hidden_layers = 6
         opt = 'Adadelta'
-        act = ['tanh','exponential', 'softplus', 'tanh', 'elu']
-#        act = ['tanh' for _ in range(num_hidden_layers)]
+#        act = ['tanh','exponential', 'softplus', 'tanh', 'elu']
+        act = ['tanh' for _ in range(num_hidden_layers)]
         dp_on = True 
 #        dp_on = hp.Boolean('dropout', default=False)
+        lr = 0.1
+#        lr = hp.Float('learning_rate', 1.e-2, 1.e1, sampling='log', default=10.)
 
         num_connected_layers = hp.Int('num_connected_layers', 1, 5, default=1)
         l2lam = hp.Float('l2_lambda', 1.e-8, 1.e-2, sampling='log', default=1.e-4)
-        lr = hp.Float('learning_rate', 1.e-2, 1.e1, sampling='log', default=10.)
 
-        num_units = [hp.Int(f'units_{i}', 5, 625, sampling='log') for i in range(num_hidden_layers)]
+        num_units = [hp.Int(f'units_{i}', 5, 50, sampling='log') for i in range(num_hidden_layers)]
         dp = [hp.Float(f'dropout_{i}', 0., 0.3, 0.05) for i in range(num_hidden_layers)]
         
         # create a MirroredStrategy
@@ -88,12 +89,12 @@ class qrnnHyperModel(kt.HyperModel):
                         )
 
 
-def compute_qweights(sr, qs):
+def compute_qweights(sr, qs, weights=None):
     quantiles = np.quantile(sr, qs)
     es = np.array(sr)[:,None] - quantiles
     huber_e = Hubber(es, 1.e-4, signed=True)
     loss = np.maximum(qs*huber_e, (qs-1.)*huber_e)
-    qweights = 1./np.mean(loss, axis=0)
+    qweights = 1./np.average(loss, axis=0, weights=weights)
     return qweights/np.min(qweights)
 
 def Hubber(e, delta=0.1, signed=False):
@@ -111,25 +112,24 @@ def main(options):
     # prepare data set
     variables = ['probeS4','probeR9','probeCovarianceIeIp','probePhiWidth','probeSigmaIeIe','probeEtaWidth']
     kinrho = ['probePt','probeScEta','probePhi','rho'] 
+    weight = ['ml_weight']
 
     data_key = options.data_key
     EBEE = options.EBEE 
 
     print(f'for {data_key}, {EBEE}')
       
-    inputtrain = 'df_{}_{}_train.h5'.format(data_key, EBEE)
-    inputtest = 'df_{}_{}_test.h5'.format(data_key, EBEE)
+    inputtrain = 'weighted_dfs/df_{}_{}_train.h5'.format(data_key, EBEE)
+    inputtest = 'weighted_dfs/df_{}_{}_test.h5'.format(data_key, EBEE)
     
     #load dataframe
-    nEvt = 100000
-    df_train = (pd.read_hdf(inputtrain).loc[:,kinrho+variables]).sample(nEvt, random_state=100).reset_index(drop=True)
+    nEvt = 2000000
+    df_train = (pd.read_hdf(inputtrain).loc[:,kinrho+variables+weight]).sample(nEvt, random_state=100).reset_index(drop=True)
     
-    #scale or transform data
+    #transform features and targets
     transformer_file = 'data_{}'.format(EBEE)
-    df_train.loc[:,variables] = transform(df_train.loc[:,variables], transformer_file, variables)
-
-    scale_file = 'scale_para/data_{}.h5'.format(EBEE)
-    df_train.loc[:,kinrho] = scale(df_train.loc[:,kinrho], scale_file=scale_file)
+    df_train.loc[:,kinrho+variables] = transform(df_train.loc[:,kinrho+variables], transformer_file, kinrho+variables)
+    print(df_train)
 
     target = variables[options.ith_var]
     features = kinrho 
@@ -137,9 +137,10 @@ def main(options):
 
     X = df_train.loc[:,features]
     Y = df_train.loc[:,target]
+    sample_weight = df_train.loc[:,'ml_weight']
 
     qs = np.array([0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.99])
-    qweights = compute_qweights(Y, qs)
+    qweights = compute_qweights(Y, qs, sample_weight)
     print('quantile loss weights: {}'.format(qweights))
 
     checkpoint_dir = 'ckpt/{}_{}_{}'.format(data_key, EBEE, target)
@@ -158,12 +159,12 @@ def main(options):
     search_start = time.time()
     tuner.search(
         X, Y,
+        sample_weight = sample_weight, 
         epochs = 300,
         validation_split = 0.1,  
         callbacks = [
-            EarlyStopping(monitor='val_loss', min_delta=0.0005, patience=7, verbose=1),
-            ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=3, verbose=1), 
-#            ModelCheckpoint(filepath=checkpoint_dir+'/ckpt-{epoch}', save_freq="epoch"),
+            EarlyStopping(monitor='val_loss', min_delta=0.0001, patience=7, verbose=1),
+            ReduceLROnPlateau(monitor='val_loss', factor=0.1, min_delta=0.0001, patience=3, verbose=1), 
             TerminateOnNaN()
             ], 
         shuffle = True,

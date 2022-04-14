@@ -44,12 +44,14 @@ def fit_power_transformer(df, variables, file_name, methods = None):
 
 def transform(df, file_name, variables):
     if len(df.shape)==1 or df.shape[1]==1:
-        transformer = pickle.load(gzip.open('transformer/{}_{}.pkl'.format(file_name, variables)))
+        var_raw = variables[:variables.find('_')] if '_' in variables else variables
+        transformer = pickle.load(gzip.open('transformer/{}_{}.pkl'.format(file_name, var_raw)))
         return transformer.transform(np.array(df).reshape(-1,1)).flatten()
     else: 
         df_tr = pd.DataFrame()
         for var in variables: 
-            transformer = pickle.load(gzip.open('transformer/{}_{}.pkl'.format(file_name, var)))
+            var_raw = var[:var.find('_')] if '_' in var else var
+            transformer = pickle.load(gzip.open('transformer/{}_{}.pkl'.format(file_name, var_raw)))
             df_tr[var] = transformer.transform(np.array(df[var]).reshape(-1,1)).flatten()
         try: 
             df_tr['ml_weight'] = df['ml_weight']
@@ -59,15 +61,17 @@ def transform(df, file_name, variables):
 
 def inverse_transform(df, file_name, variables):
     if len(df.shape)==1 or df.shape[1]==1:
+        var_raw = variables[:variables.find('_')] if '_' in variables else variables
         transformer = pickle.load(gzip.open('transformer/{}_{}.pkl'.format(file_name, variables)))
         return transformer.inverse_transform(np.array(df).reshape(-1,1)).flatten()
     else: 
         df_itr = pd.DataFrame()
         for var in variables: 
-            transformer = pickle.load(gzip.open('transformer/{}_{}.pkl'.format(file_name, var)))
+            var_raw = var[:var.find('_')] if '_' in var else var
+            transformer = pickle.load(gzip.open('transformer/{}_{}.pkl'.format(file_name, var_raw)))
             df_itr[var] = transformer.inverse_transform(np.array(df[var]).reshape(-1,1)).flatten()
         try: 
-            df_tr['ml_weight'] = df['ml_weight']
+            df_itr['ml_weight'] = df['ml_weight']
         except KeyError:
             print('No weight found! ')
         return df_itr

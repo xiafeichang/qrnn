@@ -4,11 +4,8 @@ from qrnn import trainQuantile, predict
 class Corrector:
 
    # store regressors
-   def __init__(self,mc_model,data_model,X,Y,scale_par=None,diz=False):
+   def __init__(self,mc_model,data_model,X,Y,qs,qweights,scale_par=None,diz=False):
       self.diz=diz #Flag for distribution with discrete 0, i.e. Isolation
-      qs = np.array([0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.99])
-#      qs = np.array([0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.99])
-      qweights = np.ones_like(qs)
       self.mcqtls   = np.array(predict(X,qs,qweights,mc_model,scale_par))
       self.dataqtls = np.array(predict(X,qs,qweights,data_model,scale_par))
 
@@ -51,5 +48,8 @@ class Corrector:
    def __call__(self):
       return np.array([ self.correctEvent(iev) for iev in range(self.Y.size) ]).ravel()
 
-def applyCorrection(mc_model,data_model,X,Y,scale_par=None,diz=False):
-   return Corrector(mc_model,data_model,X,Y,scale_par,diz)()
+def applyCorrection(mc_model,data_model,X,Y,qs=None,qweights=None,scale_par=None,diz=False):
+    if (qs is None) or (qweights is None): 
+        qs = np.array([0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.99])
+        qweights = np.ones_like(qs)
+    return Corrector(mc_model,data_model,X,Y,qs,qweights,scale_par,diz)()

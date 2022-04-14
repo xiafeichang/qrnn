@@ -1,3 +1,4 @@
+import argparse
 import numpy as np
 import pandas as pd
 
@@ -44,33 +45,37 @@ def compute_weights(hist):
 
 
 
-def main():
+def main(options):
 
     xname = 'probePt'
     yname = 'rho'
     bins = 50
 
-#    data_key = 'data'
-    EBEE = 'EB'
+    data_key = options.data_key
+    EBEE = options.EBEE 
 #    df_type = 'train'
     
-    for data_key in ('data', 'mc'): 
-        for df_type in ('train', 'test'):
+    for df_type in ('train', 'test'):
+        inputfile = 'df_{}_{}_Iso_{}.h5'.format(data_key, EBEE, df_type) # for isolation 
+#        inputfile = 'df_{}_{}_{}.h5'.format(data_key, EBEE, df_type)
+        print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>weighting file: ', inputfile)
+        df = pd.read_hdf('dataframes/{}'.format(inputfile))
+        print('orignal dataframe: \n', df)
 
-            inputfile = 'df_{}_{}_{}.h5'.format(data_key, EBEE, df_type)
-            print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>weighting file: ', inputfile)
-            df = pd.read_hdf(inputfile)
-            print('orignal dataframe: \n', df)
+        hist, xedges, yedges = np.histogram2d(df[xname], df[yname], bins=bins)
+        weights = compute_weights(hist)
 
-            hist, xedges, yedges = np.histogram2d(df[xname], df[yname], bins=bins)
-            weights = compute_weights(hist)
+        df_weighted = assign_weights(df, weights, xname, xedges, yname, yedges)
 
-            df_weighted = assign_weights(df, weights, xname, xedges, yname, yedges)
-
-            print('weighted dataframe: \n', df_weighted)
-            df_weighted.to_hdf('weighted_dfs/{}'.format(inputfile),'df',mode='w',format='t')
+        print('weighted dataframe: \n', df_weighted)
+        df_weighted.to_hdf('weighted_dfs/{}'.format(inputfile),'df',mode='w',format='t')
+        print('dataframe {} has been created'.format(inputfile))
 
 
 if __name__ == '__main__':
-    main()
-
+    parser = argparse.ArgumentParser()
+    requiredArgs = parser.add_argument_group('Required Arguements')
+    requiredArgs.add_argument('-d','--data_key', action='store', type=str, required=True)
+    requiredArgs.add_argument('-e','--EBEE', action='store', type=str, required=True)
+    options = parser.parse_args()
+    main(options)

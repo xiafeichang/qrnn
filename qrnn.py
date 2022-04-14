@@ -63,6 +63,7 @@ def trainQuantile(X, Y, qs, qweights=None, num_hidden_layers=3, num_units=None, 
         print('Creating a new model')
         model = get_compiled_model(qs, qweights, input_dim, num_hidden_layers, num_units, act, num_connected_layers, l2lam, opt, lr, dp_on, dp, gauss_std)
 
+    model.summary()
     history = model.fit(
         X, Y, 
         sample_weight = sample_weight, 
@@ -209,12 +210,12 @@ def get_compiled_model(qs, qweights, input_dim, num_hidden_layers, num_units, ac
     def custom_loss(y_true, y_pred): 
         return qloss(y_true, y_pred, qs, qweights)
     model.compile(loss=custom_loss, optimizer=optimizer)
-    model.summary()
+#    model.summary()
 
     return model
 
 
-def load_or_restore_model(checkpoint_dir, qs, qweights, input_dim, num_hidden_layers, num_units, act, num_connected_layers=1, l2lam=1.e-3, opt='SGD', lr=0.1, dp_on=False, dp=None, gauss_std=None):
+def load_or_restore_model(checkpoint_dir, qs, qweights, *args, **kwargs):
 
     checkpoints = [checkpoint_dir + "/" + name for name in os.listdir(checkpoint_dir)]
     if checkpoints:
@@ -224,7 +225,7 @@ def load_or_restore_model(checkpoint_dir, qs, qweights, input_dim, num_hidden_la
             return qloss(y_true, y_pred, qs, qweights)
         return load_model(latest_checkpoint, custom_objects={'custom_loss':custom_loss})
     print("Creating a new model")
-    return get_compiled_model(qs, qweights, input_dim, num_hidden_layers, num_units, act, num_connected_layers, l2lam, opt, lr, dp_on, dp, gauss_std)
+    return get_compiled_model(qs, qweights, *args, **kwargs)
 
 
 def qloss(y_true, y_pred, qs, qweights):

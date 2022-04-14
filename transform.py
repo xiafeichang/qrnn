@@ -19,9 +19,14 @@ def showDist(df, variables, title, file_name, nrows, ncols, figsize):
     fig.savefig('plots/transform_{}.png'.format(file_name))
 
 def fit_standard_scaler(df, variables, file_name):
+    try: 
+        sample_weight = np.array(df['ml_weight'])
+    except KeyError:
+        print('No weight found!')
+        sample_weight = None
     for var in variables: 
         transformer = preprocessing.StandardScaler()
-        transformer.fit(np.array(df[var]).reshape(-1,1), sample_weight=np.array(df['ml_weight']))
+        transformer.fit(np.array(df[var]).reshape(-1,1), sample_weight=sample_weight)
         pickle.dump(transformer, gzip.open('transformer/{}_{}.pkl'.format(file_name, var), 'wb'),protocol=pickle.HIGHEST_PROTOCOL)
 
 def fit_quantile_transformer(df, variables, file_name, output_distribution='uniform', random_state=None):
@@ -40,26 +45,36 @@ def fit_power_transformer(df, variables, file_name, methods = None):
 
 def transform(df, file_name, variables):
     if len(df.shape)==1 or df.shape[1]==1:
-        transformer = pickle.load(gzip.open('transformer/{}_{}.pkl'.format(file_name, variables)))
+        var_raw = variables[:variables.find('_')] if '_' in variables else variables
+        transformer = pickle.load(gzip.open('transformer/{}_{}.pkl'.format(file_name, var_raw)))
         return transformer.transform(np.array(df).reshape(-1,1)).flatten()
     else: 
         df_tr = pd.DataFrame()
         for var in variables: 
-            transformer = pickle.load(gzip.open('transformer/{}_{}.pkl'.format(file_name, var)))
+            var_raw = var[:var.find('_')] if '_' in var else var
+            transformer = pickle.load(gzip.open('transformer/{}_{}.pkl'.format(file_name, var_raw)))
             df_tr[var] = transformer.transform(np.array(df[var]).reshape(-1,1)).flatten()
-        df_tr['ml_weight'] = df['ml_weight']
+        try: 
+            df_tr['ml_weight'] = df['ml_weight']
+        except KeyError:
+            print('No weight found! ')
         return df_tr
 
 def inverse_transform(df, file_name, variables):
     if len(df.shape)==1 or df.shape[1]==1:
+        var_raw = variables[:variables.find('_')] if '_' in variables else variables
         transformer = pickle.load(gzip.open('transformer/{}_{}.pkl'.format(file_name, variables)))
         return transformer.inverse_transform(np.array(df).reshape(-1,1)).flatten()
     else: 
         df_itr = pd.DataFrame()
         for var in variables: 
-            transformer = pickle.load(gzip.open('transformer/{}_{}.pkl'.format(file_name, var)))
+            var_raw = var[:var.find('_')] if '_' in var else var
+            transformer = pickle.load(gzip.open('transformer/{}_{}.pkl'.format(file_name, var_raw)))
             df_itr[var] = transformer.inverse_transform(np.array(df[var]).reshape(-1,1)).flatten()
-        df_itr['ml_weight'] = df['ml_weight']
+        try: 
+            df_itr['ml_weight'] = df['ml_weight']
+        except KeyError:
+            print('No weight found! ')
         return df_itr
 
 
@@ -76,7 +91,7 @@ inputtrain = 'weighted_dfs/df_{}_{}_train.h5'.format(data_key, EBEE)
 inputtest = 'weighted_dfs/df_{}_{}_test.h5'.format(data_key, EBEE)
 
 #load dataframe
-nEvnt = 3000000
+nEvnt = 5000000
 df_train = (pd.read_hdf(inputtrain).loc[:,vars_tran+weight]).sample(nEvnt, random_state=100).reset_index(drop=True)
 df_test  = (pd.read_hdf(inputtest).loc[:,vars_tran+weight]).sample(nEvnt, random_state=100).reset_index(drop=True)
 

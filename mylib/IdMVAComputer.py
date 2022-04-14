@@ -5,7 +5,7 @@ from joblib import delayed, Parallel
 class IdMvaComputer:
 
    def __init__(self,weightsEB,weightsEE,correct=[],tpC='qr',leg2016=False):
-      rt.gROOT.LoadMacro("./phoIDMVAonthefly.C")
+      rt.gROOT.LoadMacro("/work/xchang/try/qrnn/qrnn/mylib/phoIDMVAonthefly.C")
       
       self.rhoSubtraction = False
       # if type(correct) == dict:
@@ -18,13 +18,13 @@ class IdMvaComputer:
       self.X = rt.phoIDInput()
       self.readerEB = rt.bookReadersEB(weightsEB, self.X)
       
-      self.readerEE = rt.bookReadersEE(weightsEE, self.X, self.rhoSubtraction, self.leg2016)
+#      self.readerEE = rt.bookReadersEE(weightsEE, self.X, self.rhoSubtraction, self.leg2016)
       
       # print ("IdMvaComputer.__init__")
       if leg2016:
-         columns = ["probeScEnergy","probeScEta","rho","probeR9","probeSigmaIeIe","probePhiWidth","probeEtaWidth","probeCovarianceIetaIphi","probeS4","probePhoIso","probeChIso03","probeChIso03worst","probeSigmaRR","probeScPreshowerEnergy","probePt"]
+         columns = ["probeScEnergy","probeScEta","rho","probeR9","probeSigmaIeIe","probePhiWidth","probeEtaWidth","probeCovarianceIetaIphi","probeS4","probePhoIso","probeChIso03","probeChIso03worst","probeSigmaRR","probeesEnergyOverSCRawEnergy","probePt"]
       else:
-         columns = ["probeScEnergy","probeScEta","rho","probeR9","probeSigmaIeIe","probePhiWidth","probeEtaWidth","probeCovarianceIeIp","probeS4","probePhoIso","probeChIso03","probeChIso03worst","probeSigmaRR","probeScPreshowerEnergy","probePt"]
+         columns = ["probeScEnergy","probeScEta","rho","probeR9","probeSigmaIeIe","probePhiWidth","probeEtaWidth","probeCovarianceIeIp","probeS4","probePhoIso","probeChIso03","probeChIso03worst","probeSigmaRR","probeesEnergyOverSCRawEnergy","probePt"]
 
       if self.rhoSubtraction:
          self.effareas = np.array([[0.0000, 0.1210],   
@@ -93,8 +93,8 @@ class IdMvaComputer:
       return np.apply_along_axis( self.predict, 1, Xvals ).ravel()
       
    def predict(self,row):
-      return self.predictEB(row) if np.abs(row[1]) < 1.5 else self.predictEE(row)
-      # return self.predictEB(row)
+#      return self.predictEB(row) if np.abs(row[1]) < 1.5 else self.predictEE(row)
+      return self.predictEB(row)
       
    def predictEB(self,row):
       # use numeric indexes to speed up
@@ -133,11 +133,11 @@ class IdMvaComputer:
       self.X.phoIdMva_pfChgIso03_      = row[10]
       self.X.phoIdMva_pfChgIso03worst_ = row[11]
       self.X.phoIdMva_ESEffSigmaRR_    = row[12]
-      esEn                             = row[13]
-      ScEn                             = row[0]
-      self.X.phoIdMva_esEnovSCRawEn_ = esEn/ScEn
+      self.X.phoIdMva_esEnovSCRawEn_   = row[13]
       return self.readerEE.EvaluateMVA("BDT")
 
 
 def helpComputeIdMva(weightsEB,weightsEE,correct,X,tpC,leg2016):
    return IdMvaComputer(weightsEB,weightsEE,correct,tpC,leg2016)(X)
+
+
