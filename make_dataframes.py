@@ -10,15 +10,15 @@ def make_dataframe(path, tree, data_key, EBEE, dfDir, dfname, cut=None, split=No
                 'probePhi', 'mass', 'probeCovarianceIpIp', 'tagEtaWidth_Sc', 'probeHoE', 'probeFull5x5_e1x5', 'probeFull5x5_e5x5', 'probeNeutIso', 'probePassEleVeto']
 
     variables = ['probeEtaWidth_Sc', 'probeR9', 'probeS4', 'probePhiWidth_Sc', 'probeSigmaIeIe', 'probeCovarianceIeIp', 
-                'probePhoIso', 'probeChIso03', 'probeChIso03worst', 'probeesEnergyOverSCRawEnergy'] 
+                'probeChIso03', 'probeChIso03worst', 'probeesEnergyOverSCRawEnergy'] 
  
     rename_dict = {'tagPhiWidth_Sc': 'tagPhiWidth', 
                    'tagEtaWidth_Sc': 'tagEtaWidth'}
     if data_key == 'data':
-        branches = Branches + variables 
-        rename_dict.update({'probeEtaWidth_Sc': 'probeEtaWidth', 'probePhiWidth_Sc': 'probePhiWidth'})
+        branches = Branches + variables + ['probePhoIso03'] 
+        rename_dict.update({'probeEtaWidth_Sc': 'probeEtaWidth', 'probePhiWidth_Sc': 'probePhiWidth', 'probePhoIso03':'probePhoIso'})
     elif data_key == 'mc': 
-        vars_raw = [(var[:var.find('_')] if '_' in var else var) for var in variables]
+        vars_raw = [(var[:var.find('_')] if '_' in var else var) for var in variables+['probePhoIso']]
         branches = Branches + ['{}_uncorr'.format(var) for var in vars_raw]
         rename_dict.update({'{}_uncorr'.format(var):var for var in vars_raw})
    
@@ -82,6 +82,8 @@ def main(options):
     year = 2018
     split = 0.5
     dfDir = './dataframes'
+
+#    make_dataframe(path[data_key], tree[data_key], data_key, EBEE, dfDir, 'df_{}_all'.format(data_key, EBEE))
 
     make_dataframe(path[data_key], tree[data_key], data_key, EBEE, dfDir, 'df_{}_{}'.format(data_key, EBEE), cut, split)
     make_dataframe(path[data_key], tree[data_key], data_key, EBEE, dfDir, 'df_{}_{}_Iso'.format(data_key, EBEE), cutIso[EBEE], split)

@@ -1,9 +1,15 @@
 import numpy as np
+np.random.seed(100)
+from qrnn import trainQuantile, predict
 
 class Shifter2D:
 
 
-    def __init__(self,mcp0tclf,datap0tclf,mcqclf0,mcqclf1,X,Y):
+    def __init__(self,mcp0tclf,datap0tclf,mcq_model0,mcq_model1,X,Y,qs,qweights,final_reg=False):
+        self.qs = qs
+        self.qweights = qweights
+        X = np.array(X)
+        Y = np.array(Y)
 
         proba_mc_clf = mcp0tclf.predict_proba(X)
         self.p00_mc = proba_mc_clf[:,0]
@@ -15,18 +21,18 @@ class Shifter2D:
         self.p01_data = proba_data_clf[:,1]
         self.p11_data = proba_data_clf[:,2]
 
-        if len(mcqclf0)>1 and len(mcqclf1)>1:
-            self.mcqtls0 = np.array([clf.predict(np.hstack((X,Y[:,1].reshape(-1,1)))) for clf in mcqclf0])
-            self.mcqtls1 = np.array([clf.predict(np.hstack((X,Y[:,0].reshape(-1,1)))) for clf in mcqclf1])
-            self.tailReg0 = None
-            self.tailReg1 = None
-
-        elif len(mcqclf0) == 1 and len(mcqclf1) == 1:
-            self.tailReg0 = mcqclf0[0]
-            self.tailReg1 = mcqclf1[0]
+        if final_reg:
+            self.tailReg0 = mcq_model0
+            self.tailReg1 = mcq_model1
             self.X = X
             self.mcqtls0 = None
             self.mcqtls1 = None
+
+        else:
+            self.mcqtls0 = np.array(predict(np.hstack((X,Y[:,1].reshape(-1,1))),qs,qweights,mcq_model0)).T
+            self.mcqtls1 = np.array(predict(np.hstack((X,Y[:,0].reshape(-1,1))),qs,qweights,mcq_model1)).T
+            self.tailReg0 = None
+            self.tailReg1 = None
 
         self.Y = Y
 
@@ -86,7 +92,7 @@ class Shifter2D:
         epsilon = 1.e-5
         r=np.random.uniform(0.01+epsilon,0.99)
         p=np.random.uniform(0.01+epsilon,0.99)
-        bins = np.hstack(([0.01],np.linspace(0.05,0.95,19),[0.99]))
+        bins = self.qs 
 
         if self.mcqtls0 is not None and self.mcqtls1 is not None:
             indqr = np.searchsorted(bins,r)
@@ -103,5 +109,8 @@ class Shifter2D:
         return np.array([self.shiftYev(iev) for iev in range(self.Y.shape[0])]).reshape(-1,2)
 
 
-def apply2DShift(mcp0tclf,datap0tclf,mcqclf1,mcqclf2,X,Y):
-    return Shifter2D(mcp0tclf,datap0tclf,mcqclf1,mcqclf2,X,Y)()
+def apply2DShift(mcp0tclf,datap0tclf,mcq_model0,mcq_model1,X,Y,qs=None,qweights=None,final_reg=False):
+    if (qs is None) or (qweights is None): 
+        qs = np.array([0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.99])
+        qweights = np.ones_like(qs)
+    return Shifter2D(mcp0tclf,datap0tclf,mcq_model0,mcq_model1,X,Y,qs,qweights,final_reg)()

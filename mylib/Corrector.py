@@ -9,7 +9,7 @@ class Corrector:
       self.mcqtls   = np.array(predict(X,qs,qweights,mc_model,scale_par))
       self.dataqtls = np.array(predict(X,qs,qweights,data_model,scale_par))
 
-      self.Y = Y
+      self.Y = np.array(Y)
 
    # correction is actually done here
    def correctEvent(self,iev):

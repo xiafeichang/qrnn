@@ -13,6 +13,12 @@
 ##SBATCH --array=0-5
 
 #python $1 -d $2 -e $3 -i ${SLURM_ARRAY_TASK_ID}
-python $1 -e $2 
+#python $1 -e $2 
 #python $1
+
+#python train_Iso.py -e EB -v Ph
+python train_Iso_mc.py -e EB -v Ph -r yes
+#python train_Iso.py -e EB -v Ch
+#python train_Iso_mc.py -e EB -v Ch
+python check_results.py -e EB
 

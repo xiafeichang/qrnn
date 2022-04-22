@@ -1,11 +1,15 @@
 import numpy as np
+np.random.seed(100)
+from qrnn import trainQuantile, predict
 
 import logging
 logger = logging.getLogger(__name__)
 
 class Shifter:
 
-    def __init__(self,mcp0tclf,datap0tclf,mcqclf,X,Y):
+    def __init__(self,mcp0tclf,datap0tclf,mcq_model,X,Y,qs,qweights,final_reg=False):
+        self.qs = qs
+        self.qweights = qweights
 
         proba_mc_clf = mcp0tclf.predict_proba(X)
         self.pPeak_mc = proba_mc_clf[:,0]
@@ -15,19 +19,20 @@ class Shifter:
         self.pPeak_data = proba_data_clf[:,0]
         self.pTail_data = proba_data_clf[:,1]
 
-        if len(mcqclf) > 1:
-            self.mcqtls   = np.array([clf.predict(X) for clf in mcqclf])
-            self.tailReg = None
-        elif len(mcqclf) == 1:
-            self.tailReg = mcqclf[0]
+        if final_reg:
+            self.tailReg = mcq_model
             self.mcqtls = None
-            self.X = X
+            self.X = np.array(X)
+        else:
+            self.mcqtls   = np.array(predict(X,qs,qweights,mcq_model)).T
+            self.tailReg = None
 
-        self.Y = Y
+        self.Y = np.array(Y)
 
     def shiftYev(self,iev):
 
         Y = self.Y[iev]
+
         r=np.random.uniform()
 
         drats=self.get_diffrats(self.pPeak_mc[iev],self.pTail_mc[iev],self.pPeak_data[iev],self.pTail_data[iev])
@@ -45,7 +50,7 @@ class Shifter:
 
         epsilon = 1.e-5
         r=np.random.uniform(0.01+epsilon,0.99)
-        bins = np.hstack(([0.01],np.linspace(0.05,0.95,19),[0.99]))
+        bins = self.qs 
 
         if self.mcqtls is not None:
             indq = np.searchsorted(bins,r)
@@ -64,5 +69,8 @@ class Shifter:
         return np.array([self.shiftYev(iev) for iev in range(self.Y.size)]).ravel()
 
 
-def applyShift(mcp0tclf,datap0tclf,tail_reg,X,Y):
-    return Shifter(mcp0tclf,datap0tclf,tail_reg,X,Y)()
+def applyShift(mcp0tclf,datap0tclf,mcq_model,X,Y,qs=None,qweights=None,final_reg=False):
+    if (qs is None) or (qweights is None): 
+        qs = np.array([0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.99])
+        qweights = np.ones_like(qs)
+    return Shifter(mcp0tclf,datap0tclf,mcq_model,X,Y,qs,qweights,final_reg)()

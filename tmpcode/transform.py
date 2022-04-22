@@ -5,6 +5,7 @@ from matplotlib import pyplot as plt
 from sklearn import preprocessing 
 import pickle
 import gzip
+import time
 
 def showDist(df, variables, title, file_name, nrows, ncols, figsize): 
     fig, axs = plt.subplots(nrows,ncols,figsize=figsize,tight_layout=True)
@@ -43,16 +44,14 @@ def fit_power_transformer(df, variables, file_name, methods = None):
         pickle.dump(transformer, gzip.open('transformer/{}_{}.pkl'.format(file_name, var), 'wb'),protocol=pickle.HIGHEST_PROTOCOL)
 
 def transform(df, file_name, variables):
-    if not isinstance(variables, list):
+    if len(df.shape)==1 or df.shape[1]==1:
         var_raw = variables[:variables.find('_')] if '_' in variables else variables
-        print('transform for {} with transformer/{}_{}.pkl'.format(var_raw, file_name, var_raw))
         transformer = pickle.load(gzip.open('transformer/{}_{}.pkl'.format(file_name, var_raw)))
         return transformer.transform(np.array(df).reshape(-1,1)).flatten()
     else: 
         df_tr = pd.DataFrame()
         for var in variables: 
             var_raw = var[:var.find('_')] if '_' in var else var
-            print('transform for {} with transformer/{}_{}.pkl'.format(var_raw, file_name, var_raw))
             transformer = pickle.load(gzip.open('transformer/{}_{}.pkl'.format(file_name, var_raw)))
             df_tr[var] = transformer.transform(np.array(df[var]).reshape(-1,1)).flatten()
         try: 
@@ -62,16 +61,14 @@ def transform(df, file_name, variables):
         return df_tr
 
 def inverse_transform(df, file_name, variables):
-    if not isinstance(variables, list):
+    if len(df.shape)==1 or df.shape[1]==1:
         var_raw = variables[:variables.find('_')] if '_' in variables else variables
-        print('inverse transform for {} with transformer/{}_{}.pkl'.format(var_raw, file_name, var_raw))
-        transformer = pickle.load(gzip.open('transformer/{}_{}.pkl'.format(file_name, var_raw)))
+        transformer = pickle.load(gzip.open('transformer/{}_{}.pkl'.format(file_name, variables)))
         return transformer.inverse_transform(np.array(df).reshape(-1,1)).flatten()
     else: 
         df_itr = pd.DataFrame()
         for var in variables: 
             var_raw = var[:var.find('_')] if '_' in var else var
-            print('inverse transform for {} with transformer/{}_{}.pkl'.format(var_raw, file_name, var_raw))
             transformer = pickle.load(gzip.open('transformer/{}_{}.pkl'.format(file_name, var_raw)))
             df_itr[var] = transformer.inverse_transform(np.array(df[var]).reshape(-1,1)).flatten()
         try: 
@@ -81,3 +78,62 @@ def inverse_transform(df, file_name, variables):
         return df_itr
 
 
+variables = ['probeS4','probeR9','probeCovarianceIeIp','probePhiWidth','probeSigmaIeIe','probeEtaWidth']
+kinrho = ['probePt','probeScEta','probePhi','rho'] 
+weight = ['ml_weight']
+
+vars_tran = kinrho + variables
+
+data_key = 'data'
+EBEE = 'EB'
+  
+inputtrain = 'weighted_dfs/df_{}_{}_train.h5'.format(data_key, EBEE)
+inputtest = 'weighted_dfs/df_{}_{}_test.h5'.format(data_key, EBEE)
+
+#load dataframe
+nEvnt = 5000000
+df_train = (pd.read_hdf(inputtrain).loc[:,vars_tran+weight]).sample(nEvnt, random_state=100).reset_index(drop=True)
+df_test  = (pd.read_hdf(inputtest).loc[:,vars_tran+weight]).sample(nEvnt, random_state=100).reset_index(drop=True)
+
+# show the distribution before transform
+matplotlib.use('agg')
+print(df_train)
+print(df_test)
+showDist(df_train, vars_tran, 'Original distribution (training set)', 'train_before', nrows=3, ncols=4, figsize=(12,9))
+showDist(df_test, vars_tran, 'Original distribution (test set)', 'test_before', nrows=3, ncols=4, figsize=(12,9))
+
+# transform
+#methods = ['box-cox','box-cox','yeo-johnson','box-cox','yeo-johnson','box-cox','box-cox']
+transformer_file = '{}_{}'.format(data_key, EBEE)
+fit_start = time.time()
+fit_quantile_transformer(df_train, variables, transformer_file, output_distribution='normal', random_state=100)
+#fit_power_transformer(df_train, vars_tran, transformer_file, methods)
+fit_standard_scaler(df_train, kinrho, transformer_file)
+fit_end = time.time()
+print('time spent in fitting the transformer: {} s'.format(fit_end-fit_start))
+
+# draw transformed distributions
+df_train_tr = transform(df_train, transformer_file, vars_tran)
+df_test_tr = transform(df_test, transformer_file, vars_tran)
+print(df_train_tr)
+print(df_test_tr)
+trans_end = time.time()
+print('time spent in transforming the test dataset: {} s'.format(trans_end-fit_end))
+
+showDist(df_train_tr, vars_tran, 'Transformed distribution (training set)', 'train_after', nrows=3, ncols=4, figsize=(12,9))
+showDist(df_test_tr, vars_tran, 'Transformed distribution (test set)', 'test_after', nrows=3, ncols=4, figsize=(12,9))
+
+# inverse transform
+df_train_itr = inverse_transform(df_train_tr, transformer_file, vars_tran)
+df_test_itr = inverse_transform(df_test_tr, transformer_file, vars_tran)
+print(df_train_itr)
+print(df_test_itr)
+
+showDist(df_train_itr, vars_tran, 'Inversed transform (training set)', 'train_inverse', nrows=3, ncols=4, figsize=(12,9))
+showDist(df_test_itr, vars_tran, 'Inversed transform (test set)', 'test_inverse', nrows=3, ncols=4, figsize=(12,9))
+
+#showDist((df_train-df_train_itr)/df_train.std(), vars_tran, 'Original - inversed transform (training set)', 'train_diff', nrows=3, ncols=4, figsize=(12,9))
+#showDist((df_test-df_test_itr)/df_test.std(), vars_tran, 'Original - inversed transform (test set)', 'test_diff', nrows=3, ncols=4, figsize=(12,9))
+
+
+ 
