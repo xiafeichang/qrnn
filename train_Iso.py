@@ -34,7 +34,8 @@ def main(options):
     inputtest = 'weighted_dfs/df_{}_{}_Iso_test.h5'.format(data_key, EBEE)
    
     #load dataframe
-    nEvt = 3500000
+#    nEvt = 3500000
+    nEvt = 1000000
     df_train = (pd.read_hdf(inputtrain).loc[:,kinrho+variables+weight]).sample(nEvt, random_state=100).reset_index(drop=True)
     
     #transform features and targets
@@ -108,7 +109,7 @@ def main(options):
             df_train, 
             kinrho, variables, 
             clf_name = '{}/{}_{}_clf_{}_{}.pkl'.format(modeldir, data_key, EBEE, variables[0], variables[1]),
-            tree_method = 'gpu_hist',
+#            tree_method = 'gpu_hist',
             eval_metric = eval_metric,
             early_stopping_rounds = 10,
             )
@@ -119,7 +120,7 @@ def main(options):
             df_train, 
             kinrho, variables[0], 
             clf_name = '{}/{}_{}_clf_{}.pkl'.format(modeldir, data_key, EBEE, variables[0]),
-            tree_method = 'gpu_hist',
+#            tree_method = 'gpu_hist',
             eval_metric = eval_metric,
             early_stopping_rounds = 10,
             )
@@ -127,15 +128,15 @@ def main(options):
 
     print('time spent in training classifier: {} s'.format(time.time()-train_end))
 
-    # plot training history
-    clf_lc_fig = plt.figure(tight_layout=True)
-    plt.plot(clf_results['validation_0'][eval_metric], label='training')
-    plt.plot(clf_results['validation_1'][eval_metric], label='validation')
-    plt.title('Training history')
-    plt.xlabel('epoch')
-    plt.ylabel('log loss')
-    plt.legend()
-    clf_lc_fig.savefig(fig_name)
+#    # plot training history
+#    clf_lc_fig = plt.figure(tight_layout=True)
+#    plt.plot(clf_results['validation_0'][eval_metric], label='training')
+#    plt.plot(clf_results['validation_1'][eval_metric], label='validation')
+#    plt.title('Training history')
+#    plt.xlabel('epoch')
+#    plt.ylabel('log loss')
+#    plt.legend()
+#    clf_lc_fig.savefig(fig_name)
 
    
    

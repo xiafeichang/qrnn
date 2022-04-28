@@ -13,8 +13,9 @@ import gzip
 from qrnn import trainQuantile, predict, scale
 from mylib.transformer import transform, inverse_transform
 from mylib.Corrector import Corrector, applyCorrection
+from mylib.tools import *
 
-
+'''
 def compute_qweights(sr, qs, weights=None):
     quantiles = np.quantile(sr, qs)
     es = np.array(sr)[:,None] - quantiles
@@ -31,7 +32,7 @@ def Hubber(e, delta=0.1, signed=False):
         return np.sign(e)*np.where(is_small_e, small_e, big_e) 
     else: 
         return np.where(is_small_e, small_e, big_e)
-    
+''' 
 
    
 
@@ -48,7 +49,8 @@ def main(options):
     inputtest = 'weighted_dfs/df_{}_{}_test.h5'.format(data_key, EBEE)
    
     #load dataframe
-    nEvt = 3600000
+#    nEvt = 3600000
+    nEvt = 1000000
     df_train = (pd.read_hdf(inputtrain).loc[:,kinrho+variables+weight]).sample(nEvt, random_state=100).reset_index(drop=True)
     
     #transform features and targets
@@ -57,6 +59,9 @@ def main(options):
 
     # setup neural net
     batch_size = pow(2, 13)
+#    num_hidden_layers = 6
+#    num_connected_layers = 3
+#    num_units = [30, 25, 20, 30, 25, 10]
     num_hidden_layers = 5
     num_connected_layers = 2
     num_units = [30, 15, 20, 15, 10]
@@ -69,8 +74,8 @@ def main(options):
     
     train_start = time.time()
 
-    modeldir = 'test/chained_models'
-    plotsdir = 'test/plots'
+    modeldir = 'chained_models'
+    plotsdir = 'plots'
 
     sample_weight = df_train.loc[:,'ml_weight']
 
@@ -91,7 +96,7 @@ def main(options):
         model_file_mc = '{}/{}_{}_{}'.format(modeldir, 'mc', EBEE, target)
         model_file_data = '{}/{}_{}_{}'.format(modeldir, 'data', EBEE, target)
         try: 
-            df_train['{}_corr'.format(target)] = applyCorrection(model_file_mc, model_file_data, X, Y, diz=False)
+            df_train['{}_corr'.format(target)] = parallelize(applyCorrection, X, Y, model_file_mc, model_file_data, diz=False)
             print(f'applied correction with existing models: {model_file_data}, {model_file_mc}')
         except OSError:
             print(f'training new mc model for {target}')
@@ -120,7 +125,7 @@ def main(options):
             history_fig.savefig('{}/training_histories/{}_{}_{}.png'.format(plotsdir, data_key, EBEE, target))
 
             print(f'correcting mc with models: {model_file_data}, {model_file_mc}')
-            df_train['{}_corr'.format(target)] = applyCorrection(model_file_mc, model_file_data, X, Y, diz=False)
+            df_train['{}_corr'.format(target)] = parallelize(applyCorrection, X, Y, model_file_mc, model_file_data, diz=False)
 
     train_end = time.time()
     print('time spent in training: {} s'.format(train_end-train_start))

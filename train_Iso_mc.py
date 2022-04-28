@@ -18,10 +18,8 @@ from mylib.transformer import transform, inverse_transform
 from mylib.Corrector import Corrector, applyCorrection
 from mylib.Shifter import Shifter, applyShift
 from mylib.Shifter2D import Shifter2D, apply2DShift
+from mylib.tools import *
 
-def load_clf(clf_name): 
-    clf = pkl.load(gzip.open(clf_name))
-    return clf['clf']
 
 def main(options):
     if options.var_type == 'Ph':
@@ -48,7 +46,8 @@ def main(options):
     inputtest = 'weighted_dfs/df_{}_{}_Iso_test.h5'.format(data_key, EBEE)
    
     #load dataframe
-    nEvt = 3500000
+#    nEvt = 3500000
+    nEvt = 1000000
     df_train = (pd.read_hdf(inputtrain).loc[:,kinrho+variables+weight]).sample(nEvt, random_state=100).reset_index(drop=True)
     
     #transform features and targets
@@ -72,7 +71,7 @@ def main(options):
                 df_train, 
                 kinrho, variables, 
                 clf_name = clf_name_mc,
-                tree_method = 'gpu_hist',
+#                tree_method = 'gpu_hist',
                 eval_metric='mlogloss',
                 )
             fig_name = '{}/training_histories/{}_{}_clf_{}_{}.png'.format(plotsdir, data_key, EBEE, variables[0], variables[1])
@@ -87,7 +86,7 @@ def main(options):
                 df_train, 
                 kinrho, variables[0], 
                 clf_name = clf_name_mc,
-                tree_method = 'gpu_hist',
+#                tree_method = 'gpu_hist',
                 eval_metric='logloss',
                 )
             fig_name = '{}/training_histories/{}_{}_clf_{}.png'.format(plotsdir, data_key, EBEE, variables)
@@ -95,17 +94,17 @@ def main(options):
     print('time spent in training classifier: {} s'.format(time.time()-clf_start))
 
     # plot training history
-    try: 
-        clf_lc_fig = plt.figure(tight_layout=True)
-        plt.plot(clf_results['validation_0']['logloss'], label='training')
-        plt.plot(clf_results['validation_1']['logloss'], label='validation')
-        plt.title('Training history')
-        plt.xlabel('epoch')
-        plt.ylabel('log loss')
-        plt.legend()
-        clf_lc_fig.savefig(fig_name)
-    except: 
-        print('Failed to draw learning curve for classifier training. Check if skipped because they are already exist')
+#    try: 
+#        clf_lc_fig = plt.figure(tight_layout=True)
+#        plt.plot(clf_results['validation_0']['logloss'], label='training')
+#        plt.plot(clf_results['validation_1']['logloss'], label='validation')
+#        plt.title('Training history')
+#        plt.xlabel('epoch')
+#        plt.ylabel('log loss')
+#        plt.legend()
+#        clf_lc_fig.savefig(fig_name)
+#    except: 
+#        print('Failed to draw learning curve for classifier training. Check if skipped because they are already exist')
 
 
     # train qrnn
@@ -220,10 +219,10 @@ def main(options):
         if not all([(f'{var}_shift' in df_train.columns) for var in variables]):
             if len(variables)>1: 
                 print(f'shifting mc with classifier and tail regressors: {clf_name_mc}, {clf_name_data}, {tReg_models}')
-                Y_shifted = apply2DShift(
+                Y_shifted = parallelize(apply2DShift, 
+                    df_train.loc[:,kinrho], df_train.loc[:,variables],
                     load_clf(clf_name_mc), load_clf(clf_name_data), 
                     tReg_models[variables[0]], tReg_models[variables[1]],
-                    df_train.loc[:,kinrho], df_train.loc[:,variables],
                     qs,qweights,
                     final_reg = False,
                     ) 
@@ -231,18 +230,18 @@ def main(options):
                 df_train['{}_shift'.format(variables[1])] = Y_shifted[:,1]
             else: 
                 print(f'shifting mc with classifiers and tail regressor: {clf_name_mc}, {clf_name_data}, {model_file_mc}')
-                Y_shifted = applyShift(
+                Y_shifted = parallelize(applyShift, 
+                    df_train.loc[:,kinrho], df_train.loc[:,variables[0]],
                     load_clf(clf_name_mc), load_clf(clf_name_data), 
                     model_file_mc,
-                    df_train.loc[:,kinrho], df_train.loc[:,variables[0]],
                     qs,qweights,
                     final_reg = False,
                     ) 
                 df_train['{}_shift'.format(variables[0])] = Y_shifted
         print(f'correcting mc with models: {model_file_data}, {model_file_mc}')
-        df_train['{}_corr'.format(target)] = applyCorrection(
-            model_file_mc, model_file_data, 
+        df_train['{}_corr'.format(target)] = parallelize(applyCorrection, 
             df_train.loc[:,features], df_train.loc[:,'{}_shift'.format(target)], 
+            model_file_mc, model_file_data, 
             diz=True, 
             )
 

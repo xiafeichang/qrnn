@@ -4,7 +4,7 @@ from joblib import delayed, Parallel
 
 class IdMvaComputer:
 
-   def __init__(self,weightsEB,weightsEE,correct=[],tpC='qr',leg2016=False):
+   def __init__(self,weightsEB,weightsEE,EBEE,correct=[],tpC='qr',leg2016=False):
       rt.gROOT.LoadMacro("/work/xchang/try/qrnn/qrnn/mylib/phoIDMVAonthefly.C")
       
       self.rhoSubtraction = False
@@ -13,12 +13,14 @@ class IdMvaComputer:
       #    correct = correct["correct"]
          
       
+      self.EBEE = EBEE
       self.tpC = tpC
       self.leg2016 = leg2016
       self.X = rt.phoIDInput()
-      self.readerEB = rt.bookReadersEB(weightsEB, self.X)
-      
-#      self.readerEE = rt.bookReadersEE(weightsEE, self.X, self.rhoSubtraction, self.leg2016)
+      if self.EBEE == 'EE':
+          self.readerEE = rt.bookReadersEE(weightsEE, self.X, self.rhoSubtraction, self.leg2016)
+      else: 
+          self.readerEB = rt.bookReadersEB(weightsEB, self.X)
       
       # print ("IdMvaComputer.__init__")
       if leg2016:
@@ -94,7 +96,10 @@ class IdMvaComputer:
       
    def predict(self,row):
 #      return self.predictEB(row) if np.abs(row[1]) < 1.5 else self.predictEE(row)
-      return self.predictEB(row)
+      if self.EBEE == 'EE': 
+          return self.predictEE(row)
+      else: 
+          return self.predictEB(row)
       
    def predictEB(self,row):
       # use numeric indexes to speed up
@@ -137,7 +142,7 @@ class IdMvaComputer:
       return self.readerEE.EvaluateMVA("BDT")
 
 
-def helpComputeIdMva(weightsEB,weightsEE,correct,X,tpC,leg2016):
-   return IdMvaComputer(weightsEB,weightsEE,correct,tpC,leg2016)(X)
+def helpComputeIdMva(weightsEB,weightsEE,EBEE,correct,X,tpC,leg2016):
+   return IdMvaComputer(weightsEB,weightsEE,EBEE,correct,tpC,leg2016)(X)
 
 

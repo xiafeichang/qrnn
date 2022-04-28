@@ -71,7 +71,7 @@ def inverse_transform(df, file_name, variables):
         df_itr = pd.DataFrame()
         for var in variables: 
             var_raw = var[:var.find('_')] if '_' in var else var
-            print('inverse transform for {} with transformer/{}_{}.pkl'.format(var_raw, file_name, var_raw))
+            print('inverse transform for {} with transformer/{}_{}.pkl'.format(var, file_name, var_raw))
             transformer = pickle.load(gzip.open('transformer/{}_{}.pkl'.format(file_name, var_raw)))
             df_itr[var] = transformer.inverse_transform(np.array(df[var]).reshape(-1,1)).flatten()
         try: 

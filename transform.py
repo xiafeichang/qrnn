@@ -87,22 +87,22 @@ def inverse_transform(df, file_name, variables):
 
 
 def main():
-#    variables = ['probeS4','probeR9','probeCovarianceIeIp','probePhiWidth','probeSigmaIeIe','probeEtaWidth']
-#    kinrho = ['probePt','probeScEta','probePhi','rho'] 
+    variables = ['probeS4','probeR9','probeCovarianceIeIp','probePhiWidth','probeSigmaIeIe','probeEtaWidth']
+    kinrho = ['probePt','probeScEta','probePhi','rho'] 
     weight = ['ml_weight']
 #    
-#    vars_tran = kinrho + variables
+    vars_tran = kinrho + variables
 
-    vars_tran = ['probePhoIso','probeChIso03','probeChIso03worst']
+#    vars_tran = ['probePhoIso','probeChIso03','probeChIso03worst']
     
     data_key = 'data'
-    EBEE = 'EB'
+    EBEE = 'EE'
       
     inputtrain = 'weighted_dfs/df_{}_{}_train.h5'.format(data_key, EBEE)
     inputtest = 'weighted_dfs/df_{}_{}_test.h5'.format(data_key, EBEE)
     
     #load dataframe
-    nEvnt = 5000000
+    nEvnt = 1500000
     df_train = (pd.read_hdf(inputtrain).loc[:,vars_tran+weight]).sample(nEvnt, random_state=100).reset_index(drop=True)
     df_test  = (pd.read_hdf(inputtest).loc[:,vars_tran+weight]).sample(nEvnt, random_state=100).reset_index(drop=True)
     print(df_train)
@@ -110,9 +110,9 @@ def main():
     
     # show the distribution before transform
     matplotlib.use('agg')
-    nrows = 1
-    ncols = 3
-    figsize = (12,3)
+    nrows = 3
+    ncols = 4
+    figsize = (12,9)
     showDist(df_train, vars_tran, 'Original distribution (training set)', 'train_before', nrows=nrows, ncols=ncols, figsize=figsize)
     showDist(df_test, vars_tran, 'Original distribution (test set)', 'test_before', nrows=nrows, ncols=ncols, figsize=figsize)
     
@@ -122,7 +122,7 @@ def main():
     fit_start = time.time()
     fit_quantile_transformer(df_train, vars_tran, transformer_file, output_distribution='normal', random_state=100)
     #fit_power_transformer(df_train, vars_tran, transformer_file, methods)
-    #fit_standard_scaler(df_train, kinrho, transformer_file)
+    fit_standard_scaler(df_train, kinrho, transformer_file)
     fit_end = time.time()
     print('time spent in fitting the transformer: {} s'.format(fit_end-fit_start))
     

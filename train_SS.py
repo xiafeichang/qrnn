@@ -48,7 +48,8 @@ def main(options):
     inputtest = 'weighted_dfs/df_{}_{}_test.h5'.format(data_key, EBEE)
    
     #load dataframe
-    nEvt = 3600000
+#    nEvt = 3600000
+    nEvt = 1000000
     df_train = (pd.read_hdf(inputtrain).loc[:,kinrho+variables+weight]).sample(nEvt, random_state=100).reset_index(drop=True)
     
     #transform features and targets
@@ -64,6 +65,9 @@ def main(options):
 #    dropout = [0.1 for _ in range(num_hidden_layers)]
 #    gauss_std = None 
 
+#    num_hidden_layers = 6
+#    num_connected_layers = 3
+#    num_units = [30, 25, 20, 30, 25, 10]
     num_hidden_layers = 5
     num_connected_layers = 2
     num_units = [30, 15, 20, 15, 10]
@@ -76,8 +80,8 @@ def main(options):
     
     train_start = time.time()
 
-    modeldir = 'test/chained_models'
-    plotsdir = 'test/plots'
+    modeldir = 'chained_models'
+    plotsdir = 'plots'
 
     target = variables[options.ith_var]
     features = kinrho + variables[:variables.index(target)] 

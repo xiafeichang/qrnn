@@ -6,8 +6,8 @@
 #SBATCH --nodes=1                        # request to run job on single node                                       
 #SBATCH --ntasks=10                      # request 10 CPU's (t3gpu01/02: balance between CPU and GPU : 5CPU/1GPU)      
 #SBATCH --gres=gpu:2                     # request  for two GPU's on machine, this is total  amount of GPUs for job        
-#SBATCH --mem=10G                        # memory (per job)
-#SBATCH --time=3-00:00                   # time  in format DD-HH:MM
+#SBATCH --mem=30G                        # memory (per job)
+#SBATCH --time=2-00:00                   # time  in format DD-HH:MM
 ##SBATCH --nodelist=t3gpu01               # submit to a specific node
 #SBATCH --gres-flags=disable-binding    
 ##SBATCH --array=0-5
@@ -16,9 +16,9 @@
 #python $1 -e $2 
 #python $1
 
-#python train_Iso.py -e EB -v Ph
-python train_Iso_mc.py -e EB -v Ph -r yes
-#python train_Iso.py -e EB -v Ch
-#python train_Iso_mc.py -e EB -v Ch
-python check_results.py -e EB
+python train_Iso.py -e EE -v Ph
+python train_Iso_mc.py -e EE -v Ph -r yes
+python train_Iso.py -e EE -v Ch
+python train_Iso_mc.py -e EE -v Ch -r yes
+python check_results.py -e EE
 
