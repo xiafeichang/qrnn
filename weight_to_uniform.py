@@ -55,9 +55,27 @@ def main(options):
     EBEE = options.EBEE 
 #    df_type = 'train'
     
-    for df_type in ('train', 'test'):
-        inputfile = 'df_{}_{}_Iso_{}.h5'.format(data_key, EBEE, df_type) # for isolation 
-#        inputfile = 'df_{}_{}_{}.h5'.format(data_key, EBEE, df_type)
+#    for df_type in ('train', 'test'):
+#        inputfile = 'df_{}_{}_Iso_{}.h5'.format(data_key, EBEE, df_type) # for isolation 
+##        inputfile = 'df_{}_{}_{}.h5'.format(data_key, EBEE, df_type)
+#        print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>weighting file: ', inputfile)
+#        df = pd.read_hdf('dataframes/{}'.format(inputfile))
+#        print('orignal dataframe: \n', df)
+#
+#        hist, xedges, yedges = np.histogram2d(df[xname], df[yname], bins=bins)
+#        weights = compute_weights(hist)
+#
+#        df_weighted = assign_weights(df, weights, xname, xedges, yname, yedges)
+#
+#        print('weighted dataframe: \n', df_weighted)
+#        df_weighted.to_hdf('weighted_dfs/{}'.format(inputfile),'df',mode='w',format='t')
+#        print('dataframe {} has been created'.format(inputfile))
+
+    for iso in (True, False):
+        if iso: 
+            inputfile = 'df_{}_{}_Iso.h5'.format(data_key, EBEE) # for isolation 
+        else: 
+            inputfile = 'df_{}_{}.h5'.format(data_key, EBEE)
         print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>weighting file: ', inputfile)
         df = pd.read_hdf('dataframes/{}'.format(inputfile))
         print('orignal dataframe: \n', df)

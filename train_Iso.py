@@ -35,7 +35,7 @@ def main(options):
    
     #load dataframe
 #    nEvt = 3500000
-    nEvt = 1000000
+    nEvt = options.nEvt
     df_train = (pd.read_hdf(inputtrain).loc[:,kinrho+variables+weight]).sample(nEvt, random_state=100).reset_index(drop=True)
     
     #transform features and targets
@@ -56,48 +56,48 @@ def main(options):
     modeldir = 'chained_models'
     plotsdir = 'plots'
 
-    for target in variables: 
-        features = kinrho + variables[:variables.index(target)] 
-        print('>>>>>>>>> train for variable {} with features {}'.format(target, features))
-    
-        # split dataset into tail part and peak part
-        df_train_tail = df_train.query(target+'!=0').reset_index(drop=True)
-#        df_train_tail.loc[:,variables] = transform(df_train_tail.loc[:,variables], transformer_file, variables)
-#        print(df_train_tail)
-    
-        # qrnn for tail distribution
-        X_tail = df_train_tail.loc[:,features]
-        Y_tail = df_train_tail.loc[:,target]
-        sample_weight_tail = df_train_tail.loc[:,'ml_weight']
-    
-        qs = np.array([0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.99])
-        qweights = compute_qweights(Y_tail, qs, sample_weight_tail)
-        print('quantile loss weights: {}'.format(qweights))
-    
-        model_file = '{}/{}_{}_{}'.format(modeldir, data_key, EBEE, target)
-        history, eval_results = trainQuantile(
-            X_tail, Y_tail, 
-            qs, qweights, 
-            num_hidden_layers, num_units, act, 
-            num_connected_layers = num_connected_layers,
-            sample_weight = sample_weight_tail,
-            l2lam = 1.e-3, 
-            opt = 'Adadelta', lr = 0.5, 
-            batch_size = batch_size, 
-            epochs = 1000, 
-            save_file = model_file, 
-            )
-    
-        # plot training history
-        history_fig = plt.figure(tight_layout=True)
-        plt.plot(history.history['loss'], label='training')
-        plt.plot(history.history['val_loss'], label='validation')
-        plt.yscale('log')
-        plt.title('Training history')
-        plt.xlabel('epoch')
-        plt.ylabel('loss')
-        plt.legend()
-        history_fig.savefig('{}/training_histories/{}_{}_{}.png'.format(plotsdir, data_key, EBEE, target))
+#    for target in variables: 
+#        features = kinrho + variables[:variables.index(target)] 
+#        print('>>>>>>>>> train for variable {} with features {}'.format(target, features))
+#    
+#        # split dataset into tail part and peak part
+#        df_train_tail = df_train.query(target+'!=0').reset_index(drop=True)
+##        df_train_tail.loc[:,variables] = transform(df_train_tail.loc[:,variables], transformer_file, variables)
+##        print(df_train_tail)
+#    
+#        # qrnn for tail distribution
+#        X_tail = df_train_tail.loc[:,features]
+#        Y_tail = df_train_tail.loc[:,target]
+#        sample_weight_tail = df_train_tail.loc[:,'ml_weight']
+#    
+#        qs = np.array([0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.99])
+#        qweights = compute_qweights(Y_tail, qs, sample_weight_tail)
+#        print('quantile loss weights: {}'.format(qweights))
+#    
+#        model_file = '{}/{}_{}_{}'.format(modeldir, data_key, EBEE, target)
+#        history, eval_results = trainQuantile(
+#            X_tail, Y_tail, 
+#            qs, qweights, 
+#            num_hidden_layers, num_units, act, 
+#            num_connected_layers = num_connected_layers,
+#            sample_weight = sample_weight_tail,
+#            l2lam = 1.e-3, 
+#            opt = 'Adadelta', lr = 0.5, 
+#            batch_size = batch_size, 
+#            epochs = 1000, 
+#            save_file = model_file, 
+#            )
+#    
+#        # plot training history
+#        history_fig = plt.figure(tight_layout=True)
+#        plt.plot(history.history['loss'], label='training')
+#        plt.plot(history.history['val_loss'], label='validation')
+#        plt.yscale('log')
+#        plt.title('Training history')
+#        plt.xlabel('epoch')
+#        plt.ylabel('loss')
+#        plt.legend()
+#        history_fig.savefig('{}/training_histories/{}_{}_{}.png'.format(plotsdir, data_key, EBEE, target))
 
     train_end = time.time()
     print('time spent in training: {} s'.format(train_end-train_start))
@@ -109,7 +109,7 @@ def main(options):
             df_train, 
             kinrho, variables, 
             clf_name = '{}/{}_{}_clf_{}_{}.pkl'.format(modeldir, data_key, EBEE, variables[0], variables[1]),
-#            tree_method = 'gpu_hist',
+            tree_method = 'gpu_hist',
             eval_metric = eval_metric,
             early_stopping_rounds = 10,
             )
@@ -120,7 +120,7 @@ def main(options):
             df_train, 
             kinrho, variables[0], 
             clf_name = '{}/{}_{}_clf_{}.pkl'.format(modeldir, data_key, EBEE, variables[0]),
-#            tree_method = 'gpu_hist',
+            tree_method = 'gpu_hist',
             eval_metric = eval_metric,
             early_stopping_rounds = 10,
             )
@@ -148,6 +148,7 @@ if __name__ == "__main__":
     requiredArgs = parser.add_argument_group('Required Arguements')
 #    requiredArgs.add_argument('-d','--data_key', action='store', type=str, required=True)
     requiredArgs.add_argument('-e','--EBEE', action='store', type=str, required=True)
+    requiredArgs.add_argument('-n','--nEvt', action='store', type=int, required=True)
     requiredArgs.add_argument('-v','--var_type', action='store', type=str, required=True)
     options = parser.parse_args()
     main(options)

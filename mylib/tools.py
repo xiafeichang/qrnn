@@ -22,10 +22,13 @@ def Hubber(e, delta=0.1, signed=False):
  
 def parallelize(func, X, Y, *args, n_jobs=10, **kwargs): 
     if len(Y.shape) == 1: 
-        Y = Y.values.reshape(-1,1)
+        Y = np.array(Y).reshape(-1,1)
     nY = Y.shape[-1]
     Z = np.hstack([X,Y])
-    return np.concatenate(Parallel(n_jobs=n_jobs, verbose=20)(delayed(func)(sli[:,:-nY], sli[:,-nY:], *args, *kwargs) for sli in np.array_split(Z, n_jobs)))
+    if nY > 1: 
+        return np.concatenate(Parallel(n_jobs=n_jobs, verbose=20)(delayed(func)(sli[:,:-nY], sli[:,-nY:], *args, **kwargs) for sli in np.array_split(Z, n_jobs)))
+    else: 
+        return np.concatenate(Parallel(n_jobs=n_jobs, verbose=20)(delayed(func)(sli[:,:-1], sli[:,-1], *args, **kwargs) for sli in np.array_split(Z, n_jobs)))
 
 def load_clf(clf_name): 
     clf = pickle.load(gzip.open(clf_name))

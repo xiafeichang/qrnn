@@ -88,10 +88,11 @@ def inverse_transform(df, file_name, variables):
 
 def main():
     variables = ['probeS4','probeR9','probeCovarianceIeIp','probePhiWidth','probeSigmaIeIe','probeEtaWidth']
+    preshower = ['probeesEnergyOverSCRawEnergy']
     kinrho = ['probePt','probeScEta','probePhi','rho'] 
     weight = ['ml_weight']
 #    
-    vars_tran = kinrho + variables
+    vars_tran = kinrho + variables + preshower
 
 #    vars_tran = ['probePhoIso','probeChIso03','probeChIso03worst']
     
@@ -102,9 +103,10 @@ def main():
     inputtest = 'weighted_dfs/df_{}_{}_test.h5'.format(data_key, EBEE)
     
     #load dataframe
-    nEvnt = 1500000
-    df_train = (pd.read_hdf(inputtrain).loc[:,vars_tran+weight]).sample(nEvnt, random_state=100).reset_index(drop=True)
-    df_test  = (pd.read_hdf(inputtest).loc[:,vars_tran+weight]).sample(nEvnt, random_state=100).reset_index(drop=True)
+    nEvnt = 850000
+    query_preshower = 'probeScEta<-1.653 or probeScEta>1.653'
+    df_train = ((pd.read_hdf(inputtrain).loc[:,vars_tran+weight]).query(query_preshower)).sample(nEvnt, random_state=100).reset_index(drop=True)
+    df_test  = ((pd.read_hdf(inputtest).loc[:,vars_tran+weight]).query(query_preshower)).sample(nEvnt, random_state=100).reset_index(drop=True)
     print(df_train)
     print(df_test)
     
@@ -120,34 +122,35 @@ def main():
     #methods = ['box-cox','box-cox','yeo-johnson','box-cox','yeo-johnson','box-cox','box-cox']
     transformer_file = '{}_{}'.format(data_key, EBEE)
     fit_start = time.time()
-    fit_quantile_transformer(df_train, vars_tran, transformer_file, output_distribution='normal', random_state=100)
+    #fit_quantile_transformer(df_train, vars_tran, transformer_file, output_distribution='normal', random_state=100)
     #fit_power_transformer(df_train, vars_tran, transformer_file, methods)
-    fit_standard_scaler(df_train, kinrho, transformer_file)
+    #fit_standard_scaler(df_train, kinrho+preshower, transformer_file)
+    fit_standard_scaler(df_train, preshower, transformer_file)
     fit_end = time.time()
-    print('time spent in fitting the transformer: {} s'.format(fit_end-fit_start))
-    
-    # draw transformed distributions
-    df_train_tr = transform(df_train, transformer_file, vars_tran)
-    df_test_tr = transform(df_test, transformer_file, vars_tran)
-    print(df_train_tr)
-    print(df_test_tr)
-    trans_end = time.time()
-    print('time spent in transforming the test dataset: {} s'.format(trans_end-fit_end))
-    
-    showDist(df_train_tr, vars_tran, 'Transformed distribution (training set)', 'train_after', nrows=nrows, ncols=ncols, figsize=figsize)
-    showDist(df_test_tr, vars_tran, 'Transformed distribution (test set)', 'test_after', nrows=nrows, ncols=ncols, figsize=figsize)
-    
-    # inverse transform
-    df_train_itr = inverse_transform(df_train_tr, transformer_file, vars_tran)
-    df_test_itr = inverse_transform(df_test_tr, transformer_file, vars_tran)
-    print(df_train_itr)
-    print(df_test_itr)
-    
-    showDist(df_train_itr, vars_tran, 'Inversed transform (training set)', 'train_inverse', nrows=nrows, ncols=ncols, figsize=figsize)
-    showDist(df_test_itr, vars_tran, 'Inversed transform (test set)', 'test_inverse', nrows=nrows, ncols=ncols, figsize=figsize)
-    
-    #showDist((df_train-df_train_itr)/df_train.std(), vars_tran, 'Original - inversed transform (training set)', 'train_diff', nrows=3, ncols=4, figsize=(12,9))
-    #showDist((df_test-df_test_itr)/df_test.std(), vars_tran, 'Original - inversed transform (test set)', 'test_diff', nrows=3, ncols=4, figsize=(12,9))
+#    print('time spent in fitting the transformer: {} s'.format(fit_end-fit_start))
+#    
+#    # draw transformed distributions
+#    df_train_tr = transform(df_train, transformer_file, vars_tran)
+#    df_test_tr = transform(df_test, transformer_file, vars_tran)
+#    print(df_train_tr)
+#    print(df_test_tr)
+#    trans_end = time.time()
+#    print('time spent in transforming the test dataset: {} s'.format(trans_end-fit_end))
+#    
+#    showDist(df_train_tr, vars_tran, 'Transformed distribution (training set)', 'train_after', nrows=nrows, ncols=ncols, figsize=figsize)
+#    showDist(df_test_tr, vars_tran, 'Transformed distribution (test set)', 'test_after', nrows=nrows, ncols=ncols, figsize=figsize)
+#    
+#    # inverse transform
+#    df_train_itr = inverse_transform(df_train_tr, transformer_file, vars_tran)
+#    df_test_itr = inverse_transform(df_test_tr, transformer_file, vars_tran)
+#    print(df_train_itr)
+#    print(df_test_itr)
+#    
+#    showDist(df_train_itr, vars_tran, 'Inversed transform (training set)', 'train_inverse', nrows=nrows, ncols=ncols, figsize=figsize)
+#    showDist(df_test_itr, vars_tran, 'Inversed transform (test set)', 'test_inverse', nrows=nrows, ncols=ncols, figsize=figsize)
+#    
+#    #showDist((df_train-df_train_itr)/df_train.std(), vars_tran, 'Original - inversed transform (training set)', 'train_diff', nrows=3, ncols=4, figsize=(12,9))
+#    #showDist((df_test-df_test_itr)/df_test.std(), vars_tran, 'Original - inversed transform (test set)', 'test_diff', nrows=3, ncols=4, figsize=(12,9))
 
 
 

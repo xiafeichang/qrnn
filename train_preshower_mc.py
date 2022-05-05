@@ -1,3 +1,4 @@
+import os
 import argparse
 import time
 import yaml
@@ -6,9 +7,6 @@ import pandas as pd
 import matplotlib
 matplotlib.use('agg')
 from matplotlib import pyplot as plt
-from sklearn import preprocessing 
-import pickle
-import gzip
 
 from qrnn import trainQuantile, predict, scale
 from mylib.transformer import transform, inverse_transform
@@ -19,35 +17,40 @@ from mylib.tools import *
 
 def main(options):
     variables = ['probeCovarianceIeIp','probeS4','probeR9','probePhiWidth','probeSigmaIeIe','probeEtaWidth']
-#    variables = ['probePhiWidth','probeEtaWidth','probeSigmaIeIe','probeS4','probeR9','probeCovarianceIeIp']
+    preshower = ['probeesEnergyOverSCRawEnergy']
     kinrho = ['probePt','probeScEta','probePhi','rho'] 
     weight = ['ml_weight']
 
+    if options.retrain is not None: 
+        retrain = options.retrain.lower() == 'yes' or options.retrain.lower() == 'y'
+        print('retrain : {} -> {}'.format(options.retrain, retrain))
+    else:
+        print('retrain argument not found, set to be False')
+        retrain = False
+
+    vars_corr = ['{}_corr'.format(target) for target in variables] 
+
     data_key = 'mc'
-    EBEE = options.EBEE 
+    EBEE = 'EE' 
      
-    inputtrain = 'weighted_dfs/df_{}_{}_train.h5'.format(data_key, EBEE)
+    inputtrain = 'dfs_corr/df_{}_{}_train_corr.h5'.format(data_key, EBEE)
     inputtest = 'weighted_dfs/df_{}_{}_test.h5'.format(data_key, EBEE)
    
     #load dataframe
-#    nEvt = 3600000
-    nEvt = 1000000
-    df_train = (pd.read_hdf(inputtrain).loc[:,kinrho+variables+weight]).sample(nEvt, random_state=100).reset_index(drop=True)
+    nEvt = 850000
+    query_preshower = 'probeScEta<-1.653 or probeScEta>1.653'
+    df_train = ((pd.read_hdf(inputtrain).loc[:,kinrho+vars_corr+preshower+weight]).query(query_preshower)).sample(nEvt, random_state=100).reset_index(drop=True)
     
     #transform features and targets
     transformer_file = 'data_{}'.format(EBEE)
-    df_train.loc[:,kinrho+variables] = transform(df_train.loc[:,kinrho+variables], transformer_file, kinrho+variables)
+    df_train.loc[:,kinrho+vars_corr] = transform(df_train.loc[:,kinrho+vars_corr], transformer_file, kinrho+vars_corr)
 
     # setup neural net
     batch_size = pow(2, 13)
-#    num_hidden_layers = 6
-#    num_connected_layers = 3
-#    num_units = [30, 25, 20, 30, 25, 10]
     num_hidden_layers = 5
     num_connected_layers = 2
     num_units = [30, 15, 20, 15, 10]
     act = ['tanh' for _ in range(num_hidden_layers)]
-#    act = ['tanh','exponential', 'softplus', 'elu', 'tanh']
     dropout = [0.1, 0.1, 0.1, 0.1, 0.1]
     gauss_std = [0.2, 0.2, 0.2, 0.2, 0.2]
 
@@ -60,10 +63,8 @@ def main(options):
 
     sample_weight = df_train.loc[:,'ml_weight']
 
-#    target = variables[options.ith_var]
-#    features = kinrho 
-    for target in variables:
-        features = kinrho + ['{}_corr'.format(x) for x in variables[:variables.index(target)]]
+    features = kinrho + vars_corr 
+    for target in preshower:
         print('>>>>>>>>> train for variable {} with features {}'.format(target, features))
 
         X = df_train.loc[:,features]
@@ -76,10 +77,10 @@ def main(options):
 
         model_file_mc = '{}/{}_{}_{}'.format(modeldir, 'mc', EBEE, target)
         model_file_data = '{}/{}_{}_{}'.format(modeldir, 'data', EBEE, target)
-        try: 
+        if os.path.exists(model_file_mc) and not retrain:
             df_train['{}_corr'.format(target)] = parallelize(applyCorrection, X, Y, model_file_mc, model_file_data, diz=False)
             print(f'applied correction with existing models: {model_file_data}, {model_file_mc}')
-        except OSError:
+        else:
             print(f'training new mc model for {target}')
             history, eval_results = trainQuantile(
                 X, Y, 
@@ -120,6 +121,8 @@ if __name__ == "__main__":
     requiredArgs = parser.add_argument_group('Required Arguements')
 #    requiredArgs.add_argument('-i','--ith_var', action='store', type=int, required=True)
 #    requiredArgs.add_argument('-d','--data_key', action='store', type=str, required=True)
-    requiredArgs.add_argument('-e','--EBEE', action='store', type=str, required=True)
+#    requiredArgs.add_argument('-e','--EBEE', action='store', type=str, required=True)
+    optArgs = parser.add_argument_group('Optional Arguments')
+    optArgs.add_argument('-r','--retrain', action='store', type=str)
     options = parser.parse_args()
     main(options)

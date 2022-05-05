@@ -8,7 +8,7 @@ import pickle as pkl
 import gzip
 
 
-def trainClfp0t(df, features, target, clf_name, val_split=0.1, n_estimators=300, learning_rate=0.05, maxDepth=10, subsample=0.5, gamma=0, tree_method='auto', **kwargs):
+def trainClfp0t(df, features, target, clf_name, val_split=0.1, n_estimators=300, learning_rate=0.01, maxDepth=10, subsample=0.5, gamma=0, tree_method='auto', **kwargs):
 
     df['p0t_{}'.format(target)] = np.apply_along_axis(lambda x: 0 if x==0 else 1, 0, df[target].values.reshape(1,-1))
 #    df_train, df_val = train_test_split(df, test_size=val_split, random_state=100)
@@ -39,7 +39,7 @@ def trainClfp0t(df, features, target, clf_name, val_split=0.1, n_estimators=300,
 #    return clf.evals_result()
     return 0 
 
-def trainClf3Cat(df, features, target, clf_name, val_split=0.1, n_estimators=500, learning_rate=0.05, maxDepth=10, gamma=0, tree_method='auto', **kwargs):
+def trainClf3Cat(df, features, target, clf_name, val_split=0.1, n_estimators=500, learning_rate=0.01, maxDepth=10, gamma=0, tree_method='auto', **kwargs):
 
     df['ChIsoCat'] = get_class_3Cat(df[target[0]].values,df[target[1]].values)
 #    df_train, df_val = train_test_split(df, test_size=val_split, random_state=100)

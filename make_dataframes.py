@@ -85,8 +85,11 @@ def main(options):
 
 #    make_dataframe(path[data_key], tree[data_key], data_key, EBEE, dfDir, 'df_{}_all'.format(data_key, EBEE))
 
-    make_dataframe(path[data_key], tree[data_key], data_key, EBEE, dfDir, 'df_{}_{}'.format(data_key, EBEE), cut, split)
-    make_dataframe(path[data_key], tree[data_key], data_key, EBEE, dfDir, 'df_{}_{}_Iso'.format(data_key, EBEE), cutIso[EBEE], split)
+#    make_dataframe(path[data_key], tree[data_key], data_key, EBEE, dfDir, 'df_{}_{}'.format(data_key, EBEE), cut, split)
+#    make_dataframe(path[data_key], tree[data_key], data_key, EBEE, dfDir, 'df_{}_{}_Iso'.format(data_key, EBEE), cutIso[EBEE], split)
+
+    make_dataframe(path[data_key], tree[data_key], data_key, EBEE, dfDir, 'df_{}_{}'.format(data_key, EBEE), cut)
+    make_dataframe(path[data_key], tree[data_key], data_key, EBEE, dfDir, 'df_{}_{}_Iso'.format(data_key, EBEE), cutIso[EBEE])
 
 if __name__ == '__main__': 
     parser = argparse.ArgumentParser()

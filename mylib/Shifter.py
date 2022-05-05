@@ -80,5 +80,5 @@ def applyShift(X,Y,mcp0tclf,datap0tclf,mcq_model,qs=None,qweights=None,final_reg
         qweights = np.ones_like(qs)
     shifter = Shifter(mcp0tclf,datap0tclf,mcq_model,X,Y,qs,qweights,final_reg)
     shifted_Y = shifter()
-    print('number of events from peak to tail: {}, from tail to peak: {}'.format(shifter.Np2t, shifter.Nt2p))
+    print('>>>>>>>>>>>>>>> number of events from peak to tail: {}, from tail to peak: {}'.format(shifter.Np2t, shifter.Nt2p))
     return shifted_Y
