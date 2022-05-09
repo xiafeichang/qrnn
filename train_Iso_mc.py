@@ -50,10 +50,6 @@ def main(options):
     nEvt = options.nEvt
     df_train = (pd.read_hdf(inputtrain).loc[:,kinrho+variables+weight]).sample(nEvt, random_state=100).reset_index(drop=True)
      
-    #transform features and targets
-    transformer_file = 'data_{}'.format(EBEE)
-    df_train.loc[:,kinrho] = transform(df_train.loc[:,kinrho], transformer_file, kinrho)
-
     modeldir = 'chained_models'
     plotsdir = 'plots'
 
@@ -71,7 +67,7 @@ def main(options):
                 df_train, 
                 kinrho, variables, 
                 clf_name = clf_name_mc,
-                tree_method = 'gpu_hist',
+#                tree_method = 'gpu_hist',
                 eval_metric='mlogloss',
                 )
             fig_name = '{}/training_histories/{}_{}_clf_{}_{}.png'.format(plotsdir, data_key, EBEE, variables[0], variables[1])
@@ -86,7 +82,7 @@ def main(options):
                 df_train, 
                 kinrho, variables[0], 
                 clf_name = clf_name_mc,
-                tree_method = 'gpu_hist',
+#                tree_method = 'gpu_hist',
                 eval_metric='logloss',
                 )
             fig_name = '{}/training_histories/{}_{}_clf_{}.png'.format(plotsdir, data_key, EBEE, variables)
@@ -108,6 +104,10 @@ def main(options):
 
 
     # train qrnn
+    #transform features and targets
+#    transformer_file = 'data_{}'.format(EBEE)
+#    df_train.loc[:,kinrho] = transform(df_train.loc[:,kinrho], transformer_file, kinrho)
+#
 #    batch_size = pow(2, 13)
 #    num_hidden_layers = 5
 #    num_connected_layers = 2

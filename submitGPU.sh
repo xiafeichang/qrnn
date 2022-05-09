@@ -15,14 +15,14 @@
 #python $1 -d $2 -e $3 -i ${SLURM_ARRAY_TASK_ID}
 #python $1 -e $2 -t $3 
 #python $1 -e $2 
-python $1 -r yes
+#python $1 -r yes
 
-#EBEE=EE
-#nEvt=1000000
-#
+EBEE=EB
+nEvt=3500000
+
 #python train_Iso.py -e ${EBEE} -n ${nEvt} -v Ph
 #python train_Iso_mc.py -e ${EBEE} -n ${nEvt} -v Ph -r yes
 #python train_Iso.py -e ${EBEE} -n ${nEvt} -v Ch
 #python train_Iso_mc.py -e ${EBEE} -n ${nEvt} -v Ch -r yes
-#python check_results.py -e ${EBEE} -n ${nEvt}
+python check_results.py -e ${EBEE} -n ${nEvt}
 

@@ -38,24 +38,62 @@ def main(options):
     nEvt = options.nEvt
     df_train = (pd.read_hdf(inputtrain).loc[:,kinrho+variables+weight]).sample(nEvt, random_state=100).reset_index(drop=True)
     
-    #transform features and targets
-    transformer_file = 'data_{}'.format(EBEE)
-    df_train.loc[:,kinrho] = transform(df_train.loc[:,kinrho], transformer_file, kinrho)
-
-
-    # train qrnn
-    batch_size = pow(2, 13)
-    num_hidden_layers = 5
-    num_connected_layers = 2
-    num_units = [30, 15, 20, 15, 10]
-    act = ['tanh' for _ in range(num_hidden_layers)]
-    dropout = [0.1, 0.1, 0.1, 0.1, 0.1]
-
-    train_start = time.time()
-
     modeldir = 'chained_models'
     plotsdir = 'plots'
 
+
+
+    # train clf
+    clf_start = time.time()
+    if len(variables)>1: 
+        eval_metric='mlogloss'
+        clf_results = trainClf3Cat(
+            df_train, 
+            kinrho, variables, 
+            clf_name = '{}/{}_{}_clf_{}_{}.pkl'.format(modeldir, data_key, EBEE, variables[0], variables[1]),
+#            tree_method = 'gpu_hist',
+#            eval_metric = eval_metric,
+#            early_stopping_rounds = 10,
+            )
+        fig_name = '{}/training_histories/{}_{}_clf_{}_{}.png'.format(plotsdir, data_key, EBEE, variables[0], variables[1])
+    else: 
+        eval_metric='logloss'
+        clf_results = trainClfp0t(
+            df_train, 
+            kinrho, variables[0], 
+            clf_name = '{}/{}_{}_clf_{}.pkl'.format(modeldir, data_key, EBEE, variables[0]),
+#            tree_method = 'gpu_hist',
+#            eval_metric = eval_metric,
+#            early_stopping_rounds = 10,
+            )
+        fig_name = '{}/training_histories/{}_{}_clf_{}.png'.format(plotsdir, data_key, EBEE, variables[0])
+
+    print('time spent in training classifier: {} s'.format(time.time()-clf_start))
+
+#    # plot training history
+#    clf_lc_fig = plt.figure(tight_layout=True)
+#    plt.plot(clf_results['validation_0'][eval_metric], label='training')
+#    plt.plot(clf_results['validation_1'][eval_metric], label='validation')
+#    plt.title('Training history')
+#    plt.xlabel('epoch')
+#    plt.ylabel('log loss')
+#    plt.legend()
+#    clf_lc_fig.savefig(fig_name)
+
+    # train qrnn
+    #transform features and targets
+#    transformer_file = 'data_{}'.format(EBEE)
+#    df_train.loc[:,kinrho] = transform(df_train.loc[:,kinrho], transformer_file, kinrho)
+#
+#    batch_size = pow(2, 13)
+#    num_hidden_layers = 5
+#    num_connected_layers = 2
+#    num_units = [30, 15, 20, 15, 10]
+#    act = ['tanh' for _ in range(num_hidden_layers)]
+#    dropout = [0.1, 0.1, 0.1, 0.1, 0.1]
+#
+#    train_start = time.time()
+#
 #    for target in variables: 
 #        features = kinrho + variables[:variables.index(target)] 
 #        print('>>>>>>>>> train for variable {} with features {}'.format(target, features))
@@ -98,46 +136,11 @@ def main(options):
 #        plt.ylabel('loss')
 #        plt.legend()
 #        history_fig.savefig('{}/training_histories/{}_{}_{}.png'.format(plotsdir, data_key, EBEE, target))
-
-    train_end = time.time()
-    print('time spent in training: {} s'.format(train_end-train_start))
+#
+#    train_end = time.time()
+#    print('time spent in training: {} s'.format(train_end-train_start))
  
     # train classifier for peak or tail
-    if len(variables)>1: 
-        eval_metric='mlogloss'
-        clf_results = trainClf3Cat(
-            df_train, 
-            kinrho, variables, 
-            clf_name = '{}/{}_{}_clf_{}_{}.pkl'.format(modeldir, data_key, EBEE, variables[0], variables[1]),
-            tree_method = 'gpu_hist',
-            eval_metric = eval_metric,
-            early_stopping_rounds = 10,
-            )
-        fig_name = '{}/training_histories/{}_{}_clf_{}_{}.png'.format(plotsdir, data_key, EBEE, variables[0], variables[1])
-    else: 
-        eval_metric='logloss'
-        clf_results = trainClfp0t(
-            df_train, 
-            kinrho, variables[0], 
-            clf_name = '{}/{}_{}_clf_{}.pkl'.format(modeldir, data_key, EBEE, variables[0]),
-            tree_method = 'gpu_hist',
-            eval_metric = eval_metric,
-            early_stopping_rounds = 10,
-            )
-        fig_name = '{}/training_histories/{}_{}_clf_{}.png'.format(plotsdir, data_key, EBEE, variables[0])
-
-    print('time spent in training classifier: {} s'.format(time.time()-train_end))
-
-#    # plot training history
-#    clf_lc_fig = plt.figure(tight_layout=True)
-#    plt.plot(clf_results['validation_0'][eval_metric], label='training')
-#    plt.plot(clf_results['validation_1'][eval_metric], label='validation')
-#    plt.title('Training history')
-#    plt.xlabel('epoch')
-#    plt.ylabel('log loss')
-#    plt.legend()
-#    clf_lc_fig.savefig(fig_name)
-
    
    
 

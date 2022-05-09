@@ -6,16 +6,17 @@ from sklearn.model_selection import train_test_split
 from time import time
 import pickle as pkl
 import gzip
+from joblib import delayed, Parallel, parallel_backend, register_parallel_backend 
 
 
-def trainClfp0t(df, features, target, clf_name, val_split=0.1, n_estimators=300, learning_rate=0.01, maxDepth=10, subsample=0.5, gamma=0, tree_method='auto', **kwargs):
+def trainClfp0t(df, features, target, clf_name, val_split=0.1, tree_method='auto', n_jobs=1, backend='loky', **kwargs):
 
     df['p0t_{}'.format(target)] = np.apply_along_axis(lambda x: 0 if x==0 else 1, 0, df[target].values.reshape(1,-1))
 #    df_train, df_val = train_test_split(df, test_size=val_split, random_state=100)
 
-    X_train = df.loc[:,features]
-    Y_train = df.loc[:,'p0t_{}'.format(target)]
-    sample_weight_train = df.loc[:,'ml_weight']
+    X_train = df.loc[:,features].values
+    Y_train = df['p0t_{}'.format(target)].values
+#    sample_weight_train = df['ml_weight'].values
 #    X_train = df_train.loc[:,features]
 #    Y_train = df_train.loc[:,'p0t_{}'.format(target)]
 #    sample_weight_train = np.sqrt(df_train.loc[:,'ml_weight'])
@@ -24,10 +25,11 @@ def trainClfp0t(df, features, target, clf_name, val_split=0.1, n_estimators=300,
 #    Y_val = df_val.loc[:,'p0t_{}'.format(target)]
 #    sample_weight_val = np.sqrt(df_val.loc[:,'ml_weight'])
 
-    clf = xgb.XGBClassifier(n_estimators=n_estimators,learning_rate=learning_rate,max_depth=maxDepth,subsample=subsample,gamma=gamma,tree_method=tree_method)
+    clf = xgb.XGBClassifier(n_estimators=300, learning_rate=0.05, maxDepth=10, subsample=0.5, gamma=0, n_jobs=n_jobs)    # max_depth=10, tree_method=tree_method
+#    with parallel_backend(backend):
     clf.fit(
         X_train, Y_train, 
-        sample_weight=sample_weight_train,
+#        sample_weight=sample_weight_train,
 #        eval_set = [(X_train,Y_train), (X_val, Y_val)],
 #        sample_weight_eval_set = [sample_weight_train, sample_weight_val],
 #        **kwargs,
@@ -39,14 +41,14 @@ def trainClfp0t(df, features, target, clf_name, val_split=0.1, n_estimators=300,
 #    return clf.evals_result()
     return 0 
 
-def trainClf3Cat(df, features, target, clf_name, val_split=0.1, n_estimators=500, learning_rate=0.01, maxDepth=10, gamma=0, tree_method='auto', **kwargs):
+def trainClf3Cat(df, features, target, clf_name, val_split=0.1, tree_method='auto', backend='loky', n_jobs=1, **kwargs):
 
     df['ChIsoCat'] = get_class_3Cat(df[target[0]].values,df[target[1]].values)
 #    df_train, df_val = train_test_split(df, test_size=val_split, random_state=100)
 
-    X_train = df.loc[:,features]
-    Y_train = df.loc[:,'ChIsoCat']
-    sample_weight_train = df.loc[:,'ml_weight']
+    X_train = df.loc[:,features].values
+    Y_train = df['ChIsoCat'].values
+#    sample_weight_train = df['ml_weight'].values
 #    X_train = df_train.loc[:,features]
 #    Y_train = df_train.loc[:,'ChIsoCat']
 #    sample_weight_train = np.sqrt(df_train.loc[:,'ml_weight'])
@@ -55,10 +57,11 @@ def trainClf3Cat(df, features, target, clf_name, val_split=0.1, n_estimators=500
 #    Y_val = df_val.loc[:,'ChIsoCat']
 #    sample_weight_val = np.sqrt(df_val.loc[:,'ml_weight'])
 
-    clf = xgb.XGBClassifier(n_estimators=n_estimators,learning_rate=learning_rate,max_depth=maxDepth,gamma=gamma,tree_method=tree_method)
+    clf = xgb.XGBClassifier(n_estimators=500, learning_rate=0.05, maxDepth=10, gamma=0, n_jobs=n_jobs)    # max_depth=10, tree_method=tree_method
+#    with parallel_backend(backend):
     clf.fit(
         X_train, Y_train, 
-        sample_weight=sample_weight_train,
+#        sample_weight=sample_weight_train,
 #        eval_set = [(X_train,Y_train), (X_val, Y_val)],
 #        sample_weight_eval_set = [sample_weight_train, sample_weight_val],
 #        **kwargs,

@@ -124,7 +124,8 @@ def draw_dist_plot(EBEE, df_data, df_mc, qs, x_vars, x_title, x_var_name, target
 
 def draw_hist(df_data, df_mc, nEvt, target, fig_name, bins=None, histrange=None, density=False, mc_weights=None, logplot=False):
     
-    mc_weights = mc_weights * nEvt / np.sum(mc_weights)
+#    mc_weights = mc_weights * nEvt / np.sum(mc_weights)
+    mc_weights = None
     
     fig = plt.figure(tight_layout=True)
     gs = GridSpec(3, 1, figure=fig)
@@ -171,13 +172,14 @@ def draw_hist(df_data, df_mc, nEvt, target, fig_name, bins=None, histrange=None,
     ax2.plot(x, np.ones_like(x), 'k-.')
 #    ax2.plot(x, np.zeros_like(x), 'k-.')
     ax2.errorbar(x, ratio_uncorr, ratio_uncorr_err, xerr, fmt='.', elinewidth=1., capsize=1., color='red')
-    ax2.errorbar(x, ratio_corr, ratio_corr_err, xerr, fmt='.', elinewidth=1., capsize=1., color='blue')
 
     if 'Iso' in target: 
         ratio_shift = data_n / mc_shift_n
         ratio_shift_err = np.sqrt(data_n + (data_n**2/mc_shift_n)) / mc_shift_n
 #        ratio_shift_err = np.sqrt((data_n*xerr*2./nEvt) + (data_n**2/mc_shift_n)*(xerr*2./nEvt)) / mc_shift_n
         ax2.errorbar(x, ratio_shift, ratio_shift_err, xerr, fmt='.', elinewidth=1., capsize=1., color='green')
+
+    ax2.errorbar(x, ratio_corr, ratio_corr_err, xerr, fmt='.', elinewidth=1., capsize=1., color='blue')
     
     ax2.grid(True)
     ax2.set_xlim(histrange)
@@ -202,20 +204,49 @@ def main(options):
 #    nEvt = 3500000
     nEvt = options.nEvt
     
-    df_data = (pd.read_hdf('dataframes/df_data_{}_Iso_test.h5'.format(EBEE))).sample(nEvt, random_state=100).reset_index(drop=True)
-    df_mc = (pd.read_hdf('dataframes/df_mc_{}_Iso_test.h5'.format(EBEE))).sample(nEvt, random_state=100).reset_index(drop=True)
+    df_data = (pd.read_hdf('/work/xchang/tmp/from_massi/df_data_{}_Iso_test.h5'.format(EBEE))).sample(nEvt, random_state=100).reset_index(drop=True)
+    df_mc = (pd.read_hdf('/work/xchang/tmp/from_massi/df_mc_{}_Iso_test.h5'.format(EBEE))).sample(nEvt, random_state=100).reset_index(drop=True)
      
+    modeldir = 'chained_models'
+    plotsdir = f'plots/check_correction/{EBEE}'
+
+    
+    # shift isolation varaibles
+    print(f'shifting mc with classifiers and tail regressor for {isoVarsPh}')
+    with parallel_backend('loky'): 
+        Y_shifted = parallelize(applyShift,
+            df_mc.loc[:,kinrho].values, df_mc.loc[:,isoVarsPh[0]].values,
+            load_clf('{}/mc_{}_clf_{}.pkl'.format(modeldir, EBEE, isoVarsPh[0])), 
+            load_clf('{}/data_{}_clf_{}.pkl'.format(modeldir, EBEE, isoVarsPh[0])), 
+            '{}/mc_{}_{}'.format(modeldir, EBEE, isoVarsPh[0]),
+            final_reg = False,
+            ) 
+    df_mc['{}_shift'.format(isoVarsPh[0])] = Y_shifted 
+
+    print(f'shifting mc with classifiers and tail regressor for {isoVarsCh}')
+    with parallel_backend('loky'): 
+        Y_shifted2D = parallelize(apply2DShift,
+            df_mc.loc[:,kinrho].values, df_mc.loc[:,isoVarsCh].values,
+            load_clf('{}/mc_{}_clf_{}_{}.pkl'.format(modeldir, EBEE, isoVarsCh[0], isoVarsCh[1])), 
+            load_clf('{}/data_{}_clf_{}_{}.pkl'.format(modeldir, EBEE, isoVarsCh[0], isoVarsCh[1])), 
+            '{}/mc_{}_tReg_{}'.format(modeldir, EBEE, isoVarsCh[0]), 
+            '{}/mc_{}_tReg_{}'.format(modeldir, EBEE, isoVarsCh[1]), 
+#            n_jobs = 3,
+            final_reg = False,
+            ) 
+    df_mc['{}_shift'.format(isoVarsCh[0])] = Y_shifted2D[:,0]
+    df_mc['{}_shift'.format(isoVarsCh[1])] = Y_shifted2D[:,1]
+
+    # transform features and target to apply qrnn
     transformer_file = 'data_{}'.format(EBEE)
     df_mc.loc[:,kinrho+variables] = transform(df_mc.loc[:,kinrho+variables], transformer_file, kinrho+variables)
     #df_data.loc[:,kinrho+variables] = transform(df_data.loc[:,kinrho+variables], transformer_file, kinrho+variables)
     print(df_mc)
     
-    modeldir = 'chained_models'
-    plotsdir = f'plots/check_correction/{EBEE}'
-    
     print('Computing weights')
-    df_mc['weight_clf'] = clf_reweight(df_mc, df_data, f'transformer/4d_reweighting_{EBEE}', n_jobs=10)
+    df_mc['weight_clf'] = clf_reweight(df_mc, df_data, f'transformer/4d_reweighting_{EBEE}_Iso', n_jobs=10)
     
+
     # correct
     corr_start = time()
     #target = variables[5]
@@ -232,15 +263,6 @@ def main(options):
     
     
 
-    print(f'shifting mc with classifiers and tail regressor for {isoVarsPh}')
-    df_mc['{}_shift'.format(isoVarsPh[0])] = parallelize(applyShift,
-        df_mc.loc[:,kinrho], df_mc.loc[:,isoVarsPh[0]],
-        load_clf('{}/mc_{}_clf_{}.pkl'.format(modeldir, EBEE, isoVarsPh[0])), 
-        load_clf('{}/data_{}_clf_{}.pkl'.format(modeldir, EBEE, isoVarsPh[0])), 
-        '{}/mc_{}_{}'.format(modeldir, EBEE, isoVarsPh[0]),
-        final_reg = False,
-        ) 
- 
     print('Correct {} with features {}'.format(isoVarsPh[0], kinrho))
     df_mc['{}_corr'.format(isoVarsPh[0])] = parallelize(applyCorrection,
         df_mc.loc[:,kinrho], df_mc.loc[:,'{}_shift'.format(isoVarsPh[0])], 
@@ -249,19 +271,6 @@ def main(options):
         diz=True, 
         )
 
-
-    print(f'shifting mc with classifiers and tail regressor for {isoVarsCh}')
-    Y_shifted = parallelize(apply2DShift,
-        df_mc.loc[:,kinrho], df_mc.loc[:,isoVarsCh],
-        load_clf('{}/mc_{}_clf_{}_{}.pkl'.format(modeldir, EBEE, isoVarsCh[0], isoVarsCh[1])), 
-        load_clf('{}/data_{}_clf_{}_{}.pkl'.format(modeldir, EBEE, isoVarsCh[0], isoVarsCh[1])), 
-        '{}/mc_{}_tReg_{}'.format(modeldir, EBEE, isoVarsCh[0]), 
-        '{}/mc_{}_tReg_{}'.format(modeldir, EBEE, isoVarsCh[1]), 
-        n_jobs = 3,
-        final_reg = False,
-        ) 
-    df_mc['{}_shift'.format(isoVarsCh[0])] = Y_shifted[:,0]
-    df_mc['{}_shift'.format(isoVarsCh[1])] = Y_shifted[:,1]
 
     print(f'correcting mc with models for {isoVarsCh}')
     for target in isoVarsCh: 
