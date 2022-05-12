@@ -39,7 +39,7 @@ def main(options):
     batch_size = pow(2, 13)
     num_hidden_layers = 5
     num_connected_layers = 2
-    num_units = [30, 15, 20, 15, 10]
+    num_units = [20, 10, 20, 15, 10]
     act = ['tanh' for _ in range(num_hidden_layers)]
     dropout = [0.1, 0.1, 0.1, 0.1, 0.1]
     gauss_std = [0.2, 0.2, 0.2, 0.2, 0.2]

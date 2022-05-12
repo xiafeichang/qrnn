@@ -48,15 +48,15 @@ def main(options):
     inputtest = 'weighted_dfs/df_{}_{}_test.h5'.format(data_key, EBEE)
    
     #load dataframe
-#    nEvt = 3600000
-    nEvt = 1000000
+    nEvt = options.nEvt
+#    nEvt = 1000000
     df_train = (pd.read_hdf(inputtrain).loc[:,kinrho+variables+weight]).sample(nEvt, random_state=100).reset_index(drop=True)
     
     #transform features and targets
     transformer_file = 'data_{}'.format(EBEE)
     df_train.loc[:,kinrho+variables] = transform(df_train.loc[:,kinrho+variables], transformer_file, kinrho+variables)
 
-    batch_size = pow(2, 13)
+    batch_size = pow(2, 10)
 #    num_hidden_layers = 5
 #    num_units_from = 50
 #    shrink_rate = 0.8
@@ -137,5 +137,6 @@ if __name__ == "__main__":
     requiredArgs.add_argument('-i','--ith_var', action='store', type=int, required=True)
     requiredArgs.add_argument('-d','--data_key', action='store', type=str, required=True)
     requiredArgs.add_argument('-e','--EBEE', action='store', type=str, required=True)
+    requiredArgs.add_argument('-n','--nEvt', action='store', type=int, required=True)
     options = parser.parse_args()
     main(options)

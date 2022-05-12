@@ -65,8 +65,7 @@ class Shifter:
         elif self.tailReg is not None:
             y_tail = float(self.tailReg.predict(np.hstack((self.X[iev],r)).reshape(1,-1)))
 
-#        return y_tail
-        return 5.
+        return y_tail
 
     def get_diffrats(self,pPeak_mc,pTail_mc,pPeak_data,pTail_data):
         return [np.divide(pTail_data-pTail_mc,pPeak_mc),np.divide(pPeak_data-pPeak_mc,pTail_mc)]

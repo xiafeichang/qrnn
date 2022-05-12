@@ -80,16 +80,19 @@ def main(options):
     data_key = options.data_key
     EBEE = options.EBEE 
     year = 2018
-    split = 0.5
-    dfDir = './dataframes'
+    split = 0.9
+    dfDir = f'./tmp_dfs/split{split}'
+
+    if not os.path.exists(dfDir): 
+        os.makedirs(dfDir)
 
 #    make_dataframe(path[data_key], tree[data_key], data_key, EBEE, dfDir, 'df_{}_all'.format(data_key, EBEE))
 
-#    make_dataframe(path[data_key], tree[data_key], data_key, EBEE, dfDir, 'df_{}_{}'.format(data_key, EBEE), cut, split)
-#    make_dataframe(path[data_key], tree[data_key], data_key, EBEE, dfDir, 'df_{}_{}_Iso'.format(data_key, EBEE), cutIso[EBEE], split)
+    make_dataframe(path[data_key], tree[data_key], data_key, EBEE, dfDir, 'df_{}_{}'.format(data_key, EBEE), cut, split)
+    make_dataframe(path[data_key], tree[data_key], data_key, EBEE, dfDir, 'df_{}_{}_Iso'.format(data_key, EBEE), cutIso[EBEE], split)
 
-    make_dataframe(path[data_key], tree[data_key], data_key, EBEE, dfDir, 'df_{}_{}'.format(data_key, EBEE), cut)
-    make_dataframe(path[data_key], tree[data_key], data_key, EBEE, dfDir, 'df_{}_{}_Iso'.format(data_key, EBEE), cutIso[EBEE])
+#    make_dataframe(path[data_key], tree[data_key], data_key, EBEE, dfDir, 'df_{}_{}'.format(data_key, EBEE), cut)
+#    make_dataframe(path[data_key], tree[data_key], data_key, EBEE, dfDir, 'df_{}_{}_Iso'.format(data_key, EBEE), cutIso[EBEE])
 
 if __name__ == '__main__': 
     parser = argparse.ArgumentParser()

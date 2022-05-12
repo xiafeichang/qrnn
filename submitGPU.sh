@@ -8,21 +8,40 @@
 #SBATCH --gres=gpu:2                     # request  for two GPU's on machine, this is total  amount of GPUs for job        
 #SBATCH --mem=40G                        # memory (per job)
 #SBATCH --time=2-00:00                   # time  in format DD-HH:MM
-##SBATCH --nodelist=t3gpu01               # submit to a specific node
+##SBATCH --nodelist=t3gpu02               # submit to a specific node
 #SBATCH --gres-flags=disable-binding    
 ##SBATCH --array=0-5
 
-#python $1 -d $2 -e $3 -i ${SLURM_ARRAY_TASK_ID}
-#python $1 -e $2 -t $3 
-#python $1 -e $2 
-#python $1 -r yes
+EBEE=$1
+nEvt=$2
 
-EBEE=EB
-nEvt=3500000
+#EBEE=EB
+#nEvt=3600000
+#nEvt=3500000
+#nEvt=1000000
+
+#python train_preshower.py
+#python train_preshower_mc.py -r yes
+
+#python train_SS.py -d data -e ${EBEE} -n ${nEvt} -i ${SLURM_ARRAY_TASK_ID}
+#python train_SS_mc.py -e ${EBEE} -n ${nEvt} -r yes 
 
 #python train_Iso.py -e ${EBEE} -n ${nEvt} -v Ph
 #python train_Iso_mc.py -e ${EBEE} -n ${nEvt} -v Ph -r yes
 #python train_Iso.py -e ${EBEE} -n ${nEvt} -v Ch
 #python train_Iso_mc.py -e ${EBEE} -n ${nEvt} -v Ch -r yes
-python check_results.py -e ${EBEE} -n ${nEvt}
+#python check_results.py -e ${EBEE} -n ${nEvt}
+
+#for EBEE in "EB" "EE";
+#do 
+#    for data_type in "train" "test"; 
+#    do
+#        echo correcting mc for ${EBEE} ${data_type}
+#        #python correct_mc.py -e ${EBEE} -t ${data_type} 
+#        python correct_final.py -e ${EBEE} -t ${data_type} 
+#    done
+#done
+
+python train_final_SS.py -e ${EBEE} -n ${nEvt} 
+
 

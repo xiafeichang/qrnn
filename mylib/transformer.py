@@ -44,14 +44,20 @@ def fit_power_transformer(df, variables, file_name, methods = None):
 
 def transform(df, file_name, variables):
     if not isinstance(variables, list):
-        var_raw = variables[:variables.find('_')] if '_' in variables else variables
+        if variables.endswith('diff') or '_' not in variables: 
+            var_raw = variables
+        else: 
+            var_raw = variables[:variables.find('_')]
         print('transform for {} with transformer/{}_{}.pkl'.format(var_raw, file_name, var_raw))
         transformer = pickle.load(gzip.open('transformer/{}_{}.pkl'.format(file_name, var_raw)))
         return transformer.transform(np.array(df).reshape(-1,1)).flatten()
     else: 
         df_tr = pd.DataFrame()
         for var in variables: 
-            var_raw = var[:var.find('_')] if '_' in var else var
+            if var.endswith('diff') or '_' not in var: 
+                var_raw = var
+            else: 
+                var_raw = var[:var.find('_')]
             print('transform for {} with transformer/{}_{}.pkl'.format(var_raw, file_name, var_raw))
             transformer = pickle.load(gzip.open('transformer/{}_{}.pkl'.format(file_name, var_raw)))
             df_tr[var] = transformer.transform(np.array(df[var]).reshape(-1,1)).flatten()
@@ -63,14 +69,20 @@ def transform(df, file_name, variables):
 
 def inverse_transform(df, file_name, variables):
     if not isinstance(variables, list):
-        var_raw = variables[:variables.find('_')] if '_' in variables else variables
+        if variables.endswith('diff') or '_' not in variables: 
+            var_raw = variables
+        else: 
+            var_raw = variables[:variables.find('_')]
         print('inverse transform for {} with transformer/{}_{}.pkl'.format(var_raw, file_name, var_raw))
         transformer = pickle.load(gzip.open('transformer/{}_{}.pkl'.format(file_name, var_raw)))
         return transformer.inverse_transform(np.array(df).reshape(-1,1)).flatten()
     else: 
         df_itr = pd.DataFrame()
         for var in variables: 
-            var_raw = var[:var.find('_')] if '_' in var else var
+            if var.endswith('diff') or '_' not in var: 
+                var_raw = var
+            else: 
+                var_raw = var[:var.find('_')]
             print('inverse transform for {} with transformer/{}_{}.pkl'.format(var, file_name, var_raw))
             transformer = pickle.load(gzip.open('transformer/{}_{}.pkl'.format(file_name, var_raw)))
             df_itr[var] = transformer.inverse_transform(np.array(df[var]).reshape(-1,1)).flatten()

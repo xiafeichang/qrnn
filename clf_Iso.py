@@ -16,7 +16,7 @@ def trainClfp0t(df, features, target, clf_name, val_split=0.1, tree_method='auto
 
     X_train = df.loc[:,features].values
     Y_train = df['p0t_{}'.format(target)].values
-#    sample_weight_train = df['ml_weight'].values
+    sample_weight_train = df['ml_weight'].values
 #    X_train = df_train.loc[:,features]
 #    Y_train = df_train.loc[:,'p0t_{}'.format(target)]
 #    sample_weight_train = np.sqrt(df_train.loc[:,'ml_weight'])
@@ -29,7 +29,7 @@ def trainClfp0t(df, features, target, clf_name, val_split=0.1, tree_method='auto
 #    with parallel_backend(backend):
     clf.fit(
         X_train, Y_train, 
-#        sample_weight=sample_weight_train,
+        sample_weight=sample_weight_train,
 #        eval_set = [(X_train,Y_train), (X_val, Y_val)],
 #        sample_weight_eval_set = [sample_weight_train, sample_weight_val],
 #        **kwargs,
@@ -48,7 +48,7 @@ def trainClf3Cat(df, features, target, clf_name, val_split=0.1, tree_method='aut
 
     X_train = df.loc[:,features].values
     Y_train = df['ChIsoCat'].values
-#    sample_weight_train = df['ml_weight'].values
+    sample_weight_train = df['ml_weight'].values
 #    X_train = df_train.loc[:,features]
 #    Y_train = df_train.loc[:,'ChIsoCat']
 #    sample_weight_train = np.sqrt(df_train.loc[:,'ml_weight'])
@@ -61,7 +61,7 @@ def trainClf3Cat(df, features, target, clf_name, val_split=0.1, tree_method='aut
 #    with parallel_backend(backend):
     clf.fit(
         X_train, Y_train, 
-#        sample_weight=sample_weight_train,
+        sample_weight=sample_weight_train,
 #        eval_set = [(X_train,Y_train), (X_val, Y_val)],
 #        sample_weight_eval_set = [sample_weight_train, sample_weight_val],
 #        **kwargs,

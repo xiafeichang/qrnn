@@ -1,3 +1,4 @@
+import os
 import argparse
 import time
 import yaml
@@ -23,6 +24,13 @@ def main(options):
     kinrho = ['probePt','probeScEta','probePhi','rho'] 
     weight = ['ml_weight']
 
+    if options.retrain is not None: 
+        retrain = options.retrain.lower() == 'yes' or options.retrain.lower() == 'y'
+        print('retrain : {} -> {}'.format(options.retrain, retrain))
+    else:
+        print('retrain argument not found, set to be False')
+        retrain = False
+
     data_key = 'mc'
     EBEE = options.EBEE 
      
@@ -30,8 +38,7 @@ def main(options):
     inputtest = 'weighted_dfs/df_{}_{}_test.h5'.format(data_key, EBEE)
    
     #load dataframe
-#    nEvt = 3600000
-    nEvt = 1000000
+    nEvt = options.nEvt
     df_train = (pd.read_hdf(inputtrain).loc[:,kinrho+variables+weight]).sample(nEvt, random_state=100).reset_index(drop=True)
     
     #transform features and targets
@@ -39,7 +46,7 @@ def main(options):
     df_train.loc[:,kinrho+variables] = transform(df_train.loc[:,kinrho+variables], transformer_file, kinrho+variables)
 
     # setup neural net
-    batch_size = pow(2, 13)
+    batch_size = pow(2, 14)
 #    num_hidden_layers = 6
 #    num_connected_layers = 3
 #    num_units = [30, 25, 20, 30, 25, 10]
@@ -76,10 +83,9 @@ def main(options):
 
         model_file_mc = '{}/{}_{}_{}'.format(modeldir, 'mc', EBEE, target)
         model_file_data = '{}/{}_{}_{}'.format(modeldir, 'data', EBEE, target)
-        try: 
-            df_train['{}_corr'.format(target)] = parallelize(applyCorrection, X, Y, model_file_mc, model_file_data, diz=False)
-            print(f'applied correction with existing models: {model_file_data}, {model_file_mc}')
-        except OSError:
+        if os.path.exists(model_file_mc) and not retrain:  
+            print(f'models {model_file_data}, {model_file_mc} already exist, skip training')
+        else: 
             print(f'training new mc model for {target}')
             history, eval_results = trainQuantile(
                 X, Y, 
@@ -105,8 +111,8 @@ def main(options):
             plt.legend()
             history_fig.savefig('{}/training_histories/{}_{}_{}.png'.format(plotsdir, data_key, EBEE, target))
 
-            print(f'correcting mc with models: {model_file_data}, {model_file_mc}')
-            df_train['{}_corr'.format(target)] = parallelize(applyCorrection, X, Y, model_file_mc, model_file_data, diz=False)
+        print(f'correcting mc with models: {model_file_data}, {model_file_mc}')
+        df_train['{}_corr'.format(target)] = parallelize(applyCorrection, X, Y, model_file_mc, model_file_data, diz=False)
 
     train_end = time.time()
     print('time spent in training: {} s'.format(train_end-train_start))
@@ -121,5 +127,8 @@ if __name__ == "__main__":
 #    requiredArgs.add_argument('-i','--ith_var', action='store', type=int, required=True)
 #    requiredArgs.add_argument('-d','--data_key', action='store', type=str, required=True)
     requiredArgs.add_argument('-e','--EBEE', action='store', type=str, required=True)
+    requiredArgs.add_argument('-n','--nEvt', action='store', type=int, required=True)
+    optArgs = parser.add_argument_group('Optional Arguments')
+    optArgs.add_argument('-r','--retrain', action='store', type=str)
     options = parser.parse_args()
     main(options)
