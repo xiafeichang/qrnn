@@ -144,3 +144,4 @@ transformer/*
 *.pkl
 *dfs*/
 *dataframes*
+*checkpoint*
