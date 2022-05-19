@@ -53,6 +53,7 @@ def main(options):
 
      
     # transform features and target to apply qrnn
+    df_mc['probeScEta_orignal'] = df_mc['probeScEta']
     transformer_file = 'data_{}'.format(EBEE)
     df_mc.loc[:,kinrho+variables] = transform(df_mc.loc[:,kinrho+variables], transformer_file, kinrho+variables)
     print(df_mc)
@@ -76,17 +77,21 @@ def main(options):
         print('Correct {} with features {}'.format(target, features))
         df_mc['{}_corr'.format(target)] = parallelize(applyCorrection, X, Y, models_mc, models_d, diz=False)
 
-    if final: 
+    if final:
         print('Correct {} with features {}'.format(preshower[0], features))
-        features = kinrho + ['{}_corr'.format(x) for x in variables]
-        df_mc.loc[np.abs(df_mc['probeScEta'])<=1.653, '{}_corr'.format(preshower[0])] = df_mc.loc[np.abs(df_mc['probeScEta'])<=1.653, preshower[0]]
-        df_mc.loc[np.abs(df_mc['probeScEta'])>1.653, '{}_corr'.format(preshower[0])] = parallelize(applyCorrection, 
-            df_mc.loc[np.abs(df_mc['probeScEta'])>1.653, features], 
-            df_mc.loc[np.abs(df_mc['probeScEta'])>1.653, preshower[0]], 
-            '{}/{}_{}_{}'.format(modeldir, 'mc', EBEE, preshower[0]),
-            '{}/{}_{}_{}'.format(modeldir, 'data', EBEE, preshower[0]),
-            diz=False, 
-            )
+        if EBEE == 'EE': 
+            features = kinrho + ['{}_corr'.format(x) for x in variables]
+#            df_mc.loc[np.abs(df_mc['probeScEta_orignal'])<=1.653, '{}_corr'.format(preshower[0])] = df_mc.loc[np.abs(df_mc['probeScEta_orignal'])<=1.653, preshower[0]]
+            df_mc.loc[np.abs(df_mc['probeScEta_orignal'])<=1.653, '{}_corr'.format(preshower[0])] = 0.
+            df_mc.loc[np.abs(df_mc['probeScEta_orignal'])>1.653, '{}_corr'.format(preshower[0])] = parallelize(applyCorrection, 
+                df_mc.loc[np.abs(df_mc['probeScEta_orignal'])>1.653, features], 
+                df_mc.loc[np.abs(df_mc['probeScEta_orignal'])>1.653, preshower[0]], 
+                '{}/{}_{}_{}'.format(modeldir, 'mc', EBEE, preshower[0]),
+                '{}/{}_{}_{}'.format(modeldir, 'data', EBEE, preshower[0]),
+                diz=False, 
+                )
+        else: 
+            df_mc['{}_corr'.format(preshower[0])] = 0.
 
     
     print('Correct {} with features {}'.format(isoVarsPh[0], kinrho))
@@ -128,9 +133,9 @@ def main(options):
         
         phoIDname = 'probePhoIdMVA'
         print('Compute photon ID MVA for uncorrected mc')
-        df_mc[phoIDname] = helpComputeIdMva(weightsEB, weightsEE, EBEE, vars_qrnn+isoVars, df_mc, 'data', False) # +isoVars 
+        df_mc[phoIDname] = helpComputeIdMva(weightsEB, weightsEE, EBEE, vars_qrnn+isoVars+preshower, df_mc, 'data', False) # +isoVars 
         print('Compute photon ID MVA for corrected mc')
-        df_mc['{}_corr'.format(phoIDname)] = helpComputeIdMva(weightsEB, weightsEE, EBEE, vars_qrnn+isoVars, df_mc, 'qr', False) # +isoVars 
+        df_mc['{}_corr'.format(phoIDname)] = helpComputeIdMva(weightsEB, weightsEE, EBEE, vars_qrnn+isoVars+preshower, df_mc, 'qr', False) # +isoVars 
         print('time spent in computing photon ID MVA: {} s'.format(time() - id_start))
 
     print(df_mc.keys())

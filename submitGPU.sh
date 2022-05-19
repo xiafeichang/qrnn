@@ -6,14 +6,14 @@
 #SBATCH --nodes=1                        # request to run job on single node                                       
 #SBATCH --ntasks=10                      # request 10 CPU's (t3gpu01/02: balance between CPU and GPU : 5CPU/1GPU)      
 #SBATCH --gres=gpu:2                     # request  for two GPU's on machine, this is total  amount of GPUs for job        
-#SBATCH --mem=40G                        # memory (per job)
-#SBATCH --time=2-00:00                   # time  in format DD-HH:MM
+#SBATCH --mem=80G                        # memory (per job)
+#SBATCH --time=3-12:00                   # time  in format DD-HH:MM
 ##SBATCH --nodelist=t3gpu02               # submit to a specific node
 #SBATCH --gres-flags=disable-binding    
 ##SBATCH --array=0-5
 
-EBEE=$1
-nEvt=$2
+#EBEE=$1
+#nEvt=$2
 
 #EBEE=EB
 #nEvt=3600000
@@ -32,16 +32,19 @@ nEvt=$2
 #python train_Iso_mc.py -e ${EBEE} -n ${nEvt} -v Ch -r yes
 #python check_results.py -e ${EBEE} -n ${nEvt}
 
-#for EBEE in "EB" "EE";
-#do 
-#    for data_type in "train" "test"; 
-#    do
-#        echo correcting mc for ${EBEE} ${data_type}
-#        #python correct_mc.py -e ${EBEE} -t ${data_type} 
-#        python correct_final.py -e ${EBEE} -t ${data_type} 
-#    done
-#done
+for EBEE in "EE" "EB";
+do 
+    for data_type in "test"; # "train"; 
+    do
+        echo correcting mc for ${EBEE} ${data_type}
+        #python correct_mc.py -e ${EBEE} -t ${data_type} 
+        #python correct_final.py -e ${EBEE} -t ${data_type} 
+        python correct_final_uncer.py -e ${EBEE} -t ${data_type} 
+    done
+done
 
-python train_final_SS.py -e ${EBEE} -n ${nEvt} 
+#python train_final_SS.py -e ${EBEE} -n ${nEvt} 
+
+#python train_final_SS_uncer.py -e ${EBEE} -n ${nEvt} 
 
 

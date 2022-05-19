@@ -3,8 +3,7 @@ import yaml
 import numpy as np
 import pandas as pd
 import matplotlib
-matplotlib.use('agg')
-#matplotlib.use('pdf')
+matplotlib.use('cairo')
 from matplotlib import pyplot as plt
 from matplotlib.gridspec import GridSpec
 
@@ -85,7 +84,7 @@ def draw_mean_plot(EBEE, df_data, df_mc, x_vars, x_title, x_var_name, target, pl
     plt.ylabel('mean of {}'.format(target))
     plt.legend()
     fig.savefig('{}/{}_{}_{}_mean.png'.format(plotsdir, EBEE, target, x_var_name))
-#    fig.savefig('{}/{}_{}_{}_mean.pdf'.format(plotsdir, EBEE, target, x_var_name))
+    fig.savefig('{}/{}_{}_{}_mean.pdf'.format(plotsdir, EBEE, target, x_var_name))
     plt.close(fig)
 
 def draw_dist_plot(EBEE, df_data, df_mc, qs, x_vars, x_title, x_var_name, target, plotsdir):
@@ -143,7 +142,7 @@ def draw_dist_plot(EBEE, df_data, df_mc, qs, x_vars, x_title, x_var_name, target
     plt.xlabel(x_title)
     plt.ylabel(target)
     fig.savefig('{}/{}_{}_{}_dist.png'.format(plotsdir, EBEE, target, x_var_name))
-#    fig.savefig('{}/{}_{}_{}_dist.pdf'.format(plotsdir, EBEE, target, x_var_name))
+    fig.savefig('{}/{}_{}_{}_dist.pdf'.format(plotsdir, EBEE, target, x_var_name))
     plt.close(fig)
 
 def draw_hist(df_data, df_mc, nEvt, target, fig_name, bins=None, histrange=None, density=False, mc_weights=None, logplot=False):
@@ -224,7 +223,7 @@ def draw_hist(df_data, df_mc, nEvt, target, fig_name, bins=None, histrange=None,
     ax2.set_xlabel(target)
     
     fig.savefig(f'{fig_name}.png')
-#    fig.savefig(f'{fig_name}.pdf')
+    fig.savefig(f'{fig_name}.pdf')
     plt.close(fig)
 
 
@@ -240,14 +239,15 @@ def main(options):
 #    nEvt = 3500000
     nEvt = options.nEvt
 
-#    df_data = (pd.read_hdf('dataframes/df_data_{}_Iso_test.h5'.format(EBEE))).sample(nEvt, random_state=100).reset_index(drop=True)
+    df_data = (pd.read_hdf('dataframes/df_data_{}_Iso_test.h5'.format(EBEE))).sample(nEvt, random_state=100).reset_index(drop=True)
 #    df_mc = (pd.read_hdf('dataframes/df_mc_{}_Iso_test.h5'.format(EBEE))).sample(nEvt, random_state=100).reset_index(drop=True)
 
-    df_data = (pd.read_hdf('dataframes/df_data_{}_test.h5'.format(EBEE))).sample(nEvt, random_state=100).reset_index(drop=True)
+#    df_data = (pd.read_hdf('dataframes/df_data_{}_test.h5'.format(EBEE))).sample(nEvt, random_state=100).reset_index(drop=True)
 #    df_mc = (pd.read_hdf('dataframes/df_mc_{}_test.h5'.format(EBEE))).sample(nEvt, random_state=100).reset_index(drop=True)
      
 #    modeldir = 'chained_models'
-    plotsdir = f'plots/check_correction_final/{EBEE}'
+    plotsdir = f'plots/check_correction/{EBEE}'
+#    plotsdir = f'plots/check_correction_final/{EBEE}'
 
     
     
@@ -287,10 +287,10 @@ def main(options):
 #
 #    # correct
 #    corr_start = time()
-#    if EBEE == 'EB': 
-#        vars_qrnn = variables.copy() 
-#    else: 
-#        vars_qrnn = variables+preshower
+    if EBEE == 'EB': 
+        vars_qrnn = variables.copy() 
+    else: 
+        vars_qrnn = variables+preshower
 #    for target in vars_qrnn: 
 #        features = kinrho + ['{}_corr'.format(x) for x in variables[:variables.index(target)]]
 #        
@@ -326,26 +326,26 @@ def main(options):
 #        df_mc['{}_corr'.format(target)] = parallelize(applyCorrection, X, Y, models_mc, models_d, diz=False)
 # 
 #
-#    vars_corr = ['{}_corr'.format(target) for target in variables] 
+    vars_corr = ['{}_corr'.format(target) for target in variables] 
 ##    df_mc.loc[:,variables+vars_corr] = inverse_transform(df_mc.loc[:,variables+vars_corr], transformer_file, variables+vars_corr)
 #    df_mc.loc[:,kinrho] = inverse_transform(df_mc.loc[:,kinrho], transformer_file, kinrho)
 #
 #
-#    if EBEE != 'EB': 
-#        vars_corr = vars_corr + ['{}_corr'.format(var) for var in preshower]
-#    isoVars = isoVarsPh+isoVarsCh
-#    isoVars_shift = ['{}_shift'.format(var) for var in isoVars]
-#    isoVars_corr = ['{}_corr'.format(var) for var in isoVars]
+    if EBEE != 'EB': 
+        vars_corr = vars_corr + ['{}_corr'.format(var) for var in preshower]
+    isoVars = isoVarsPh+isoVarsCh
+    isoVars_shift = ['{}_shift'.format(var) for var in isoVars]
+    isoVars_corr = ['{}_corr'.format(var) for var in isoVars]
 ##    print(df_mc.loc[:,kinrho+vars_qrnn+vars_corr+isoVars+isoVars_shift+isoVars_corr])
 #    print('time spent in correction: {} s'.format(time() - corr_start))
 #
-#    id_start = time()
-#    weightsEB = 'phoIDmva_weight/HggPhoId_94X_barrel_BDT_v2.weights.xml'
-#    weightsEE = 'phoIDmva_weight/HggPhoId_94X_endcap_BDT_v2.weights.xml'
-#    
-#    phoIDname = 'probePhoIdMVA'
-#    print('Compute photon ID MVA for data')
-#    df_data[phoIDname] = helpComputeIdMva(weightsEB, weightsEE, EBEE, vars_qrnn+isoVars, df_data, 'data', False) # variables+isoVars
+    id_start = time()
+    weightsEB = 'phoIDmva_weight/HggPhoId_94X_barrel_BDT_v2.weights.xml'
+    weightsEE = 'phoIDmva_weight/HggPhoId_94X_endcap_BDT_v2.weights.xml'
+    
+    phoIDname = 'probePhoIdMVA'
+    print('Compute photon ID MVA for data')
+    df_data[phoIDname] = helpComputeIdMva(weightsEB, weightsEE, EBEE, vars_qrnn+isoVars, df_data, 'data', False) # variables+isoVars
 #    print('Compute photon ID MVA for uncorrected mc')
 #    df_mc[phoIDname] = helpComputeIdMva(weightsEB, weightsEE, EBEE, vars_qrnn+isoVars, df_mc, 'data', False) # +isoVars 
 #    print('Compute photon ID MVA for corrected mc')
@@ -357,7 +357,9 @@ def main(options):
         
 
     # draw plots
-    df_mc = pd.read_hdf('dfs_corr/df_mc_{}_test_corr_final.h5'.format(EBEE))
+#    df_mc = pd.read_hdf('dfs_corr/df_mc_{}_test_corr.h5'.format(EBEE))
+    df_mc = pd.read_hdf('dfs_corr/df_mc_{}_Iso_test_corr.h5'.format(EBEE))
+#    df_mc = pd.read_hdf('dfs_corr/df_mc_{}_test_corr_final.h5'.format(EBEE))
     print('Computing weights')
     df_mc['weight_clf'] = clf_reweight(df_mc, df_data, f'transformer/4d_reweighting_{EBEE}', n_jobs=10)
 
@@ -410,7 +412,7 @@ def main(options):
     xnames  = ['probePt', 'probeScEta', 'rho',     'probePhi']
     qs = np.array([0.025, 0.16, 0.5, 0.84, 0.975])
 
-    for target in variables: #isoVars+variables+preshower 
+    for target in isoVars: #isoVars+variables+preshower 
         fig_name = '{}/data_mc_dist_{}_{}'.format(plotsdir, EBEE, target)
     
         if target in preshower: 
@@ -420,13 +422,13 @@ def main(options):
             for x, xtitle, xname in zip(xs, xtitles, xnames): 
                 draw_mean_plot(EBEE, df_data.query(query_preshower), df_mc.query(query_preshower), x, xtitle, xname, target, plotsdir)
                 draw_dist_plot(EBEE, df_data.query(query_preshower), df_mc.query(query_preshower), qs, x, xtitle, xname, target, plotsdir)
-#        elif target in isoVars: 
-#            draw_hist(df_data, df_mc, nEvt, target, fig_name, bins, histranges[target], mc_weights=df_mc['weight_clf'], logplot=logplots[target])
-#             
-#            query_iso = f'{target}!=0'
-#            for x, xtitle, xname in zip(xs, xtitles, xnames): 
-#                draw_mean_plot(EBEE, df_data.query(query_iso), df_mc.query(query_iso) x, xtitle, xname, target, plotsdir)
-#                draw_dist_plot(EBEE, df_data.query(query_iso), df_mc.query(query_iso) qs, x, xtitle, xname, target, plotsdir)
+        elif target in isoVars: 
+            draw_hist(df_data, df_mc, nEvt, target, fig_name, bins, histranges[target], mc_weights=df_mc['weight_clf'], logplot=logplots[target])
+             
+            query_iso = f'{target}!=0'
+            for x, xtitle, xname in zip(xs, xtitles, xnames): 
+                draw_mean_plot(EBEE, df_data.query(query_iso), df_mc.query(query_iso), x, xtitle, xname, target, plotsdir)
+                draw_dist_plot(EBEE, df_data.query(query_iso), df_mc.query(query_iso), qs, x, xtitle, xname, target, plotsdir)
         else: 
             draw_hist(df_data, df_mc, nEvt, target, fig_name, bins, histranges[target], mc_weights=df_mc['weight_clf'], logplot=logplots[target])
              
@@ -435,19 +437,19 @@ def main(options):
                 draw_dist_plot(EBEE, df_data, df_mc, qs, x, xtitle, xname, target, plotsdir)
 
   
-#    draw_hist(
-#        df_data, df_mc, 
-#        nEvt,
-#        phoIDname, 
-#        '{}/data_mc_dist_{}_{}'.format(plotsdir, EBEE, phoIDname),
-#        bins = bins, 
-#        histrange = (0., 1.),
-#        mc_weights = df_mc['weight_clf'], 
-#        )
-#
-#    for x, xtitle, xname in zip(xs, xtitles, xnames): 
-#        draw_mean_plot(EBEE, df_data, df_mc, x, xtitle, xname, phoIDname, plotsdir)
-#        draw_dist_plot(EBEE, df_data, df_mc, qs, x, xtitle, xname, phoIDname, plotsdir)
+    draw_hist(
+        df_data, df_mc, 
+        nEvt,
+        phoIDname, 
+        '{}/data_mc_dist_{}_{}'.format(plotsdir, EBEE, phoIDname),
+        bins = bins, 
+        histrange = (0., 1.),
+        mc_weights = df_mc['weight_clf'], 
+        )
+
+    for x, xtitle, xname in zip(xs, xtitles, xnames): 
+        draw_mean_plot(EBEE, df_data, df_mc, x, xtitle, xname, phoIDname, plotsdir)
+        draw_dist_plot(EBEE, df_data, df_mc, qs, x, xtitle, xname, phoIDname, plotsdir)
 
 
 

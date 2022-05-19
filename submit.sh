@@ -3,7 +3,7 @@
 
 #SBATCH -J train_qrnn
 ##SBATCH -n 1
-#SBATCH --cpus-per-task=10
+#SBATCH --cpus-per-task=5
 #SBATCH --mem=20G
 #SBATCH -t 0-12:00
 ##SBATCH --partition=long

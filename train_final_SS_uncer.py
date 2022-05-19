@@ -3,10 +3,11 @@ import time
 import numpy as np
 import pandas as pd
 import matplotlib
-matplotlib.use('agg')
+#matplotlib.use('agg')
+matplotlib.use('cairo')
 from matplotlib import pyplot as plt
 
-from nn import trainNN, predict
+from pbnn import trainPBNN, predict, nll
 from mylib.transformer import fit_standard_scaler, transform, inverse_transform
 
 
@@ -45,8 +46,8 @@ def main(options):
     batch_size = pow(2, 13)
 #    num_hidden_layers = 5
 #    num_units = [160, 120, 100, 80, 50]
-    num_hidden_layers = 3
-    num_units = [20, 15, 10]
+    num_hidden_layers = 5
+    num_units = [120, 100, 80, 60, 50]
     act = ['tanh' for _ in range(num_hidden_layers)]
 #    act = ['tanh','exponential', 'softplus', 'elu', 'tanh']
     dropout = [0.1, 0.1, 0.1, 0.1, 0.1]
@@ -54,8 +55,8 @@ def main(options):
 
     train_start = time.time()
 
-    modeldir = 'test/chained_models'
-    plotsdir = 'test/plots'
+    modeldir = 'chained_models'
+    plotsdir = 'plots'
 
     sample_weight = df_train.loc[:,'ml_weight']
     features = kinrho + variables
@@ -63,18 +64,24 @@ def main(options):
     X = df_train.loc[:,features]
     Y = df_target
 
-    model_file = '{}/mc_{}_SS_final'.format(modeldir, EBEE)
-    history, eval_results = trainNN(
-        X, Y, 
+
+    train_start = time.time()
+
+    model_file = '{}/mc_{}_SS_final_uncer'.format(modeldir, EBEE)
+    history, eval_results = trainPBNN(
+        X, Y,
         num_hidden_layers, num_units, act, 
         sample_weight = sample_weight,
-        l2lam = 1.e-3, 
-        opt = 'Adadelta', lr = 0.5, 
+        opt = 'Adadelta', 
+        lr = 0.5, 
         batch_size = batch_size, 
+        use_proba_output = True, 
         epochs = 1000, 
-        checkpoint_dir = f'./ckpt/final/{EBEE}', 
+        checkpoint_dir = f'./ckpt/final_uncer/{EBEE}', 
         save_file = model_file, 
         )
+
+    print('time spent in training: {} s'.format(time.time() - train_start))
 
     # plot training history
     history_fig = plt.figure(tight_layout=True)
@@ -85,7 +92,8 @@ def main(options):
     plt.xlabel('epoch')
     plt.ylabel('loss')
     plt.legend()
-    history_fig.savefig('{}/training_histories/mc_{}_final.png'.format(plotsdir, EBEE))
+    history_fig.savefig('{}/training_histories/mc_{}_final_uncer.png'.format(plotsdir, EBEE))
+    history_fig.savefig('{}/training_histories/mc_{}_final_uncer.pdf'.format(plotsdir, EBEE))
 
 
 

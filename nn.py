@@ -116,9 +116,9 @@ def get_compiled_model(input_dim, output_dim, num_hidden_layers, num_units, act,
         x = Dense(num_units[i], use_bias=True, kernel_initializer='he_normal', bias_initializer='he_normal',
                   kernel_regularizer=regularizers.l2(l2lam), 
                   activation=act[i])(x)
-    if dp is not None:
+        if dp is not None:
             x = Dropout(dp[i])(x)
-    if gauss_std is not None: 
+        if gauss_std is not None: 
             x = GaussianNoise(gauss_std[i])(x)  
     
     output = Dense(output_dim, activation=None, use_bias=True, kernel_initializer='he_normal', bias_initializer='he_normal')(x)
