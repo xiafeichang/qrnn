@@ -21,6 +21,7 @@ def main(options):
         variables = ['probePhoIso']
     elif options.var_type == 'Ch':
         variables = ['probeChIso03','probeChIso03worst']
+#        variables = ['probeChIso03worst','probeChIso03']
     else: 
         raise ValueError('var_type must be "Ph" (for photon) or "Ch" (for charged)')
     kinrho = ['probePt','probeScEta','probePhi','rho'] 
@@ -51,7 +52,8 @@ def main(options):
         eval_metric='mlogloss'
         clf_results = trainClf3Cat(
             df_train, 
-            kinrho, variables, 
+#            kinrho, variables, 
+            kinrho, ['probeChIso03','probeChIso03worst'], 
             clf_name = '{}/{}_{}_clf_{}_{}.pkl'.format(modeldir, data_key, EBEE, variables[0], variables[1]),
             tree_method = 'gpu_hist',
 #            eval_metric = eval_metric,
@@ -91,6 +93,9 @@ def main(options):
     num_hidden_layers = 5
     num_connected_layers = 2
     num_units = [30, 15, 20, 15, 10]
+#    num_hidden_layers = 6
+#    num_connected_layers = 3
+#    num_units = [20, 15, 10, 20, 15, 10]
     act = ['tanh' for _ in range(num_hidden_layers)]
     dropout = [0.1, 0.1, 0.1, 0.1, 0.1]
 
@@ -123,6 +128,7 @@ def main(options):
             sample_weight = sample_weight_tail,
             l2lam = 1.e-3, 
             opt = 'Adadelta', lr = 0.5, 
+#            op_act = 'softplus', 
             batch_size = batch_size, 
             epochs = 1000, 
             save_file = model_file, 

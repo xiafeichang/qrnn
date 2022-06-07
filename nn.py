@@ -37,7 +37,11 @@ def trainNN(X, Y, num_hidden_layers=3, num_units=None, act=None, sample_weight=N
         print('Failed to clear session, continue') 
 
     input_dim = len(X.keys())
-    output_dim = len(Y.keys())
+
+    if len(Y.shape) == 1: 
+        output_dim = 1
+    else: 
+        output_dim = Y.shape[1]
     
     if num_units is None: 
         num_units = [10 for i in range(num_hidden_layers)]
@@ -96,7 +100,7 @@ def predict(X, model_from=None, transformer=None, target_name=None):
     with tf.distribute.MirroredStrategy().scope():
         predY = model.predict(X)
 
-    print(predY)
+#    print(predY)
     if transformer is not None: 
         print('target is transformed, now mapping it back!')
         if isinstance(target_name, list):

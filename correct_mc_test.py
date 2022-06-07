@@ -16,19 +16,18 @@ def main(options):
     variables = ['probeCovarianceIeIp','probeS4','probeR9','probePhiWidth','probeSigmaIeIe','probeEtaWidth']
     isoVarsPh = ['probePhoIso']
     isoVarsCh = ['probeChIso03','probeChIso03worst']
-#    isoVarsCh = ['probeChIso03worst','probeChIso03']
     preshower = ['probeesEnergyOverSCRawEnergy']
     kinrho = ['probePt','probeScEta','probePhi','rho'] 
     
     EBEE = options.EBEE
     data_type = options.data_type
-    final = False # here final stands for if correct preshower variable and compute photon ID MVA
+    final = True # here final stands for if correct preshower variable and compute photon ID MVA
     
 #    df_mc = (pd.read_hdf('weighted_dfs/df_mc_{}_{}.h5'.format(EBEE,data_type))).reset_index(drop=True)
     df_mc = (pd.read_hdf('weighted_dfs/df_mc_{}_Iso_{}.h5'.format(EBEE,data_type))).reset_index(drop=True)
 
-    modeldir = 'chained_models'
-    outdir = 'dfs_corr'
+    modeldir = 'test/chained_models'
+    outdir = 'test/dfs_corr'
  
     # shift isolation variables
     print(f'shifting mc with classifiers and tail regressor for {isoVarsPh}')
@@ -41,17 +40,16 @@ def main(options):
         ) 
 
     print(f'shifting mc with classifiers and tail regressor for {isoVarsCh}')
-    # VERY IMPORTANT! Note the order of targets here
     Y_shifted = parallelize(apply2DShift,
-        df_mc.loc[:,kinrho], df_mc.loc[:,['probeChIso03','probeChIso03worst']],
+        df_mc.loc[:,kinrho], df_mc.loc[:,isoVarsCh],
         load_clf('{}/mc_{}_clf_{}_{}.pkl'.format(modeldir, EBEE, isoVarsCh[0], isoVarsCh[1])), 
         load_clf('{}/data_{}_clf_{}_{}.pkl'.format(modeldir, EBEE, isoVarsCh[0], isoVarsCh[1])), 
-        '{}/mc_{}_tReg_probeChIso03'.format(modeldir, EBEE), 
-        '{}/mc_{}_tReg_probeChIso03worst'.format(modeldir, EBEE), 
+        '{}/mc_{}_tReg_{}'.format(modeldir, EBEE, isoVarsCh[0]), 
+        '{}/mc_{}_tReg_{}'.format(modeldir, EBEE, isoVarsCh[1]), 
         final_reg = False,
         ) 
-    df_mc['probeChIso03_shift'] = Y_shifted[:,0]
-    df_mc['probeChIso03worst_shift'] = Y_shifted[:,1]
+    df_mc['{}_shift'.format(isoVarsCh[0])] = Y_shifted[:,0]
+    df_mc['{}_shift'.format(isoVarsCh[1])] = Y_shifted[:,1]
 
      
     # transform features and target to apply qrnn
@@ -68,16 +66,16 @@ def main(options):
         vars_qrnn = variables.copy() 
     else: 
         vars_qrnn = variables+preshower
-#    for target in variables: 
-#        features = kinrho + ['{}_corr'.format(x) for x in variables[:variables.index(target)]]
-#        
-#        X = df_mc.loc[:,features]
-#        Y = df_mc.loc[:,target]
-#        
-#        models_mc = '{}/{}_{}_{}'.format(modeldir, 'mc', EBEE, target)
-#        models_d = '{}/{}_{}_{}'.format(modeldir, 'data', EBEE, target)
-#        print('Correct {} with features {}'.format(target, features))
-#        df_mc['{}_corr'.format(target)] = parallelize(applyCorrection, X, Y, models_mc, models_d, diz=False)
+    for target in variables: 
+        features = kinrho + ['{}_corr'.format(x) for x in variables[:variables.index(target)]]
+        
+        X = df_mc.loc[:,features]
+        Y = df_mc.loc[:,target]
+        
+        models_mc = '{}/{}_{}_{}'.format(modeldir, 'mc', EBEE, target)
+        models_d = '{}/{}_{}_{}'.format(modeldir, 'data', EBEE, target)
+        print('Correct {} with features {}'.format(target, features))
+        df_mc['{}_corr'.format(target)] = parallelize(applyCorrection, X, Y, models_mc, models_d, diz=False)
 
     if final:
         print('Correct {} with features {}'.format(preshower[0], features))
@@ -117,8 +115,7 @@ def main(options):
         df_mc['{}_corr'.format(target)] = parallelize(applyCorrection, X, Y, models_mc, models_d, diz=True)
  
     vars_corr = ['{}_corr'.format(target) for target in variables] 
-#    df_mc.loc[:,vars_corr] = inverse_transform(df_mc.loc[:,vars_corr], transformer_file, vars_corr)
-    df_mc.loc[:,variables] = inverse_transform(df_mc.loc[:,variables], transformer_file, variables)
+    df_mc.loc[:,variables+vars_corr] = inverse_transform(df_mc.loc[:,variables+vars_corr], transformer_file, variables+vars_corr)
     df_mc.loc[:,kinrho] = inverse_transform(df_mc.loc[:,kinrho], transformer_file, kinrho)
 
     if final:

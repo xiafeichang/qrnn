@@ -26,6 +26,7 @@ def main(options):
         variables = ['probePhoIso']
     elif options.var_type == 'Ch':
         variables = ['probeChIso03','probeChIso03worst']
+#        variables = ['probeChIso03worst','probeChIso03']
     else: 
         raise ValueError('var_type must be "Ph" (for photon) or "Ch" (for charged)')
     kinrho = ['probePt','probeScEta','probePhi','rho'] 
@@ -66,7 +67,8 @@ def main(options):
             print('>>>>>>>>> train classifier for variable(s) {} with features {}'.format(variables, kinrho))
             clf_results = trainClf3Cat(
                 df_train, 
-                kinrho, variables, 
+#                kinrho, variables, 
+                kinrho, ['probeChIso03','probeChIso03worst'], 
                 clf_name = clf_name_mc,
                 tree_method = 'gpu_hist',
 #                eval_metric='mlogloss',
@@ -88,7 +90,7 @@ def main(options):
                 )
             fig_name = '{}/training_histories/{}_{}_clf_{}.png'.format(plotsdir, data_key, EBEE, variables)
 
-    print('time spent in training classifier: {} s'.format(time.time()-clf_start))
+    print('time spent in training classifier: {}-{:02d}:{:02d}:{:05.2f}'.format(*sec2HMS(time.time()-clf_start)))
 
     # plot training history
 #    try: 
@@ -113,6 +115,12 @@ def main(options):
     num_hidden_layers = 5
     num_connected_layers = 2
     num_units = [30, 15, 20, 15, 10]
+#    num_hidden_layers = 6
+#    num_connected_layers = 3
+#    num_units = [20, 15, 10, 20, 15, 10]
+#    num_hidden_layers = 6
+#    num_connected_layers = 3
+#    num_units = [30, 25, 20, 30, 25, 10]
     act = ['tanh' for _ in range(num_hidden_layers)]
     dropout = [0.1, 0.1, 0.1, 0.1, 0.1]
 
@@ -127,7 +135,7 @@ def main(options):
             features = kinrho + [var for var in variables if var != target] 
         
             # split dataset into tail part and peak part
-            df_train_tReg = df_train.query(target+'!=0').reset_index(drop=True)
+            df_train_tReg = df_train.query(f'{target}!=0').reset_index(drop=True)
         
             # qrnn for tail distribution
             X_tReg = df_train_tReg.loc[:,features]
@@ -151,6 +159,7 @@ def main(options):
                     sample_weight = sample_weight_tReg,
                     l2lam = 1.e-3, 
                     opt = 'Adadelta', lr = 0.5, 
+#                    op_act = 'softplus', 
                     batch_size = batch_size, 
                     epochs = 1000, 
                     save_file = model_file_tReg, 
@@ -167,7 +176,7 @@ def main(options):
                 plt.legend()
                 history_fig.savefig('{}/training_histories/{}_{}_tReg_{}.png'.format(plotsdir, data_key, EBEE, target))
     
-        print('time spent in training tail regressors: {} s'.format(time.time()-tReg_start))
+        print('time spent in training tail regressors: {}-{:02d}:{:02d}:{:05.2f}'.format(*sec2HMS(time.time()-tReg_start)))
         del df_train_tReg, X_tReg, Y_tReg, sample_weight_tReg # delete them to release memory
 
     train_start = time.time()
@@ -175,20 +184,50 @@ def main(options):
     # train qrnn
     for target in variables: 
         features = kinrho + ['{}_corr'.format(x) for x in variables[:variables.index(target)]]
+
+        model_file_mc = '{}/{}_{}_{}'.format(modeldir, 'mc', EBEE, target)
+        model_file_data = '{}/{}_{}_{}'.format(modeldir, 'data', EBEE, target)
    
-        # split dataset into tail part and peak part
-        df_train_tail = df_train.query(target+'!=0').reset_index(drop=True)
-    
+        # shift before train qrnn
+        if not all([(f'{var}_shift' in df_train.columns) for var in variables]):
+            if len(variables)>1: 
+                print(f'shifting mc with classifier and tail regressors: {clf_name_mc}, {clf_name_data}, {tReg_models}')
+                # VERY IMPORTANT! Note the order of targets here
+                Y_shifted = parallelize(apply2DShift, 
+                    df_train.loc[:,kinrho], df_train.loc[:,['probeChIso03','probeChIso03worst']],
+                    load_clf(clf_name_mc), load_clf(clf_name_data), 
+                    tReg_models['probeChIso03'], tReg_models['probeChIso03worst'],
+#                    qs,qweights,
+                    final_reg = False,
+                    ) 
+                df_train['probeChIso03_shift'] = Y_shifted[:,0]
+                df_train['probeChIso03worst_shift'] = Y_shifted[:,1]
+            else: 
+                print(f'shifting mc with classifiers and tail regressor: {clf_name_mc}, {clf_name_data}, {model_file_mc}')
+                Y_shifted = parallelize(applyShift, 
+                    df_train.loc[:,kinrho], df_train.loc[:,variables[0]],
+                    load_clf(clf_name_mc), load_clf(clf_name_data), 
+                    model_file_mc,
+#                    qs,qweights,
+                    final_reg = False,
+                    ) 
+                df_train['{}_shift'.format(variables[0])] = Y_shifted
+
+  
         # qrnn for tail distribution
+        if False: #target == 'probeChIso03worst': 
+            df_train_tail = df_train.query(f'{target}_shift!=0').reset_index(drop=True)
+            Y_tail = df_train_tail.loc[:,f'{target}_shift']
+        else: 
+            df_train_tail = df_train.query(f'{target}!=0').reset_index(drop=True)
+            Y_tail = df_train_tail.loc[:,target]
         X_tail = df_train_tail.loc[:,features]
-        Y_tail = df_train_tail.loc[:,target]
         sample_weight_tail = df_train_tail.loc[:,'ml_weight']
-    
+
+
         qweights = compute_qweights(Y_tail, qs, sample_weight_tail)
         print('quantile loss weights: {}'.format(qweights))
     
-        model_file_mc = '{}/{}_{}_{}'.format(modeldir, 'mc', EBEE, target)
-        model_file_data = '{}/{}_{}_{}'.format(modeldir, 'data', EBEE, target)
         if os.path.exists(model_file_mc) and not retrain:
             print(f'{model_file_mc} already exist, skip training')
         else: 
@@ -201,6 +240,7 @@ def main(options):
                 sample_weight = sample_weight_tail,
                 l2lam = 1.e-3, 
                 opt = 'Adadelta', lr = 0.5, 
+#                op_act = 'softplus', 
                 batch_size = batch_size, 
                 epochs = 1000, 
                 save_file = model_file_mc, 
@@ -217,28 +257,6 @@ def main(options):
             plt.legend()
             history_fig.savefig('{}/training_histories/{}_{}_{}.png'.format(plotsdir, data_key, EBEE, target))
 
-        if not all([(f'{var}_shift' in df_train.columns) for var in variables]):
-            if len(variables)>1: 
-                print(f'shifting mc with classifier and tail regressors: {clf_name_mc}, {clf_name_data}, {tReg_models}')
-                Y_shifted = parallelize(apply2DShift, 
-                    df_train.loc[:,kinrho], df_train.loc[:,variables],
-                    load_clf(clf_name_mc), load_clf(clf_name_data), 
-                    tReg_models[variables[0]], tReg_models[variables[1]],
-                    qs,qweights,
-                    final_reg = False,
-                    ) 
-                df_train['{}_shift'.format(variables[0])] = Y_shifted[:,0]
-                df_train['{}_shift'.format(variables[1])] = Y_shifted[:,1]
-            else: 
-                print(f'shifting mc with classifiers and tail regressor: {clf_name_mc}, {clf_name_data}, {model_file_mc}')
-                Y_shifted = parallelize(applyShift, 
-                    df_train.loc[:,kinrho], df_train.loc[:,variables[0]],
-                    load_clf(clf_name_mc), load_clf(clf_name_data), 
-                    model_file_mc,
-                    qs,qweights,
-                    final_reg = False,
-                    ) 
-                df_train['{}_shift'.format(variables[0])] = Y_shifted
         print(f'correcting mc with models: {model_file_data}, {model_file_mc}')
         df_train['{}_corr'.format(target)] = parallelize(applyCorrection, 
             df_train.loc[:,features], df_train.loc[:,'{}_shift'.format(target)], 
@@ -247,8 +265,9 @@ def main(options):
             )
 
 
+
     train_end = time.time()
-    print('time spent in training: {} s'.format(train_end-train_start))
+    print('time spent in training: {}-{:02d}:{:02d}:{:05.2f}'.format(*sec2HMS(train_end-train_start)))
  
    
    

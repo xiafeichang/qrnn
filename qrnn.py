@@ -29,7 +29,7 @@ if gpus:
 
 
 
-def trainQuantile(X, Y, qs, qweights=None, num_hidden_layers=3, num_units=None, act=None, num_connected_layers=1, sample_weight=None, l2lam=1.e-3, opt='SGD', lr=0.1, dp_on=False, dp=None, gauss_std=None, batch_size=64, epochs=10, checkpoint_dir='./ckpt', save_file=None, evaluate_data=None, model_plot=None):
+def trainQuantile(X, Y, qs, qweights=None, num_hidden_layers=3, num_units=None, act=None, num_connected_layers=1, sample_weight=None, l2lam=1.e-3, opt='SGD', lr=0.1, op_act=None, dp_on=False, dp=None, gauss_std=None, batch_size=64, epochs=10, checkpoint_dir='./ckpt', save_file=None, evaluate_data=None, model_plot=None):
 
     # cleanup
     try:
@@ -61,7 +61,7 @@ def trainQuantile(X, Y, qs, qweights=None, num_hidden_layers=3, num_units=None, 
     with strategy.scope():
 #        model = load_or_restore_model(checkpoint_dir, qs, input_dim, num_hidden_layers, num_units, act, qweights, dp, gauss_std)
         print('Creating a new model')
-        model = get_compiled_model(qs, qweights, input_dim, num_hidden_layers, num_units, act, num_connected_layers, l2lam, opt, lr, dp_on, dp, gauss_std)
+        model = get_compiled_model(qs, qweights, input_dim, num_hidden_layers, num_units, act, num_connected_layers, l2lam, opt, lr, op_act, dp_on, dp, gauss_std)
 
     model.summary()
     history = model.fit(
@@ -120,7 +120,7 @@ def scale(df, scale_file):
     return df_scaled
 
 
-def get_compiled_model(qs, qweights, input_dim, num_hidden_layers, num_units, act, num_connected_layers=1, l2lam=1.e-3, opt='SGD', lr=0.1, dp_on=False, dp=None, gauss_std=None):
+def get_compiled_model(qs, qweights, input_dim, num_hidden_layers, num_units, act, num_connected_layers=1, l2lam=1.e-3, opt='SGD', lr=0.1, op_act=None, dp_on=False, dp=None, gauss_std=None):
 
     nq = len(qs)
     
@@ -181,10 +181,10 @@ def get_compiled_model(qs, qweights, input_dim, num_hidden_layers, num_units, ac
     # output layer
     try: 
         for j in range(len(qs)): 
-            xs[j] = Dense(1, activation=None, use_bias=True, kernel_initializer='he_normal', bias_initializer='he_normal')(xs[j])
+            xs[j] = Dense(1, activation=op_act, use_bias=True, kernel_initializer='he_normal', bias_initializer='he_normal')(xs[j])
         output = concatenate(xs)
     except NameError:
-        output = Dense(len(qs), activation=None, use_bias=True, kernel_initializer='he_normal', bias_initializer='he_normal')(x)
+        output = Dense(len(qs), activation=op_act, use_bias=True, kernel_initializer='he_normal', bias_initializer='he_normal')(x)
 
     model = Model(inpt, output)
 

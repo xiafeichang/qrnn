@@ -2,6 +2,7 @@ import argparse
 import time
 import pandas as pd
 
+from nn import predict as NNpred
 from pbnn import predict
 from mylib.transformer import transform, inverse_transform
 from mylib.tools import *
@@ -15,7 +16,7 @@ def main(options):
     
     EBEE = options.EBEE
     data_type = options.data_type
-    nTrials = 50
+    nTrials = 20
     
     df_mc = (pd.read_hdf('weighted_dfs/df_mc_{}_{}.h5'.format(EBEE,data_type))).reset_index(drop=True)
 #    df_mc = (pd.read_hdf('weighted_dfs/df_mc_{}_Iso_{}.h5'.format(EBEE,data_type))).reset_index(drop=True)
@@ -33,10 +34,16 @@ def main(options):
     target_name = [f'{var}_corr_diff' for var in variables]
 
     pred_start = time.time()
+
+    df_diff = NNpred(df_mc.loc[:, features], f'{modeldir}/mc_{EBEE}_SS_final', trans_file_corr_diff, target_name) 
+
     dfs_diff = predict(df_mc.loc[:, features], model_file, nTrials, trans_file_corr_diff, target_name)
-    print('time spent to predict {} times: {} s'.format(nTrials, time.time()-pred_start))
+    print('time spent to predict {} times: {} day(s), {} hour(s), {} minute(s), {} second(s). '.format(nTrials, *sec2HMS(time.time()-pred_start)))
 
     df_mc.loc[:,kinrho+variables] = inverse_transform(df_mc.loc[:,kinrho+variables], transformer_file, kinrho+variables)
+
+    for var in variables: 
+        df_mc[f'{var}_corr'] = df_mc[var] + df_diff[f'{var}_corr_diff']
 
     for i in range(nTrials):
         for var in variables: 

@@ -16,34 +16,36 @@ def main(options):
     EBEE = options.EBEE
     data_type = options.data_type
     
-#    df_mc = (pd.read_hdf('weighted_dfs/df_mc_{}_{}.h5'.format(EBEE,data_type))).reset_index(drop=True)
 #    df_mc = (pd.read_hdf('weighted_dfs/df_mc_{}_Iso_{}.h5'.format(EBEE,data_type))).reset_index(drop=True)
 
-#    df_mc = (pd.read_hdf('dfs_corr/df_mc_{}_{}_corr.h5'.format(EBEE,data_type))).reset_index(drop=True)
-    df_mc = (pd.read_hdf('dfs_corr/df_mc_{}_Iso_{}_corr.h5'.format(EBEE,data_type))).reset_index(drop=True)
+    df_mc = (pd.read_hdf('test/dfs_corr/df_mc_{}_Iso_{}_corr_final.h5'.format(EBEE,data_type))).reset_index(drop=True)
 
     modeldir = 'test/chained_models'
     outdir = 'test/dfs_corr'
  
     transformer_file = 'data_{}'.format(EBEE)
-    df_mc.loc[:,kinrho+variables] = transform(df_mc.loc[:,kinrho+variables], transformer_file, kinrho+variables)
+    df_mc.loc[:,kinrho] = transform(df_mc.loc[:,kinrho], transformer_file, kinrho)
 
-    model_file = '{}/mc_{}_SS_final'.format(modeldir, EBEE)
     trans_file_corr_diff = f'mc_{EBEE}'
+    for target in isoVarsPh+isoVarsCh: 
 
-    features = kinrho + variables
-    target_name = [f'{var}_corr_diff' for var in variables]
-    df_diff = predict(df_mc.loc[:, features], model_file, trans_file_corr_diff, target_name) 
-    print(df_diff)
+        if target in isoVarsPh: 
+            features = kinrho + isoVarsPh
+        else: 
+            features = kinrho + isoVarsCh
+    
+        model_file = '{}/mc_{}_{}_final'.format(modeldir, EBEE, target)
+    
+        target_name = f'{target}_corr_diff'
+        df_mc.loc[df_mc[f'{target}_shift']==0, f'{target}_corr_final'] = 0. 
+        df_mc.loc[df_mc[f'{target}_shift']!=0, f'{target}_corr_final'] = (df_mc.loc[df_mc[f'{target}_shift']!=0, f'{target}_shift'] 
+            + predict(df_mc.loc[df_mc[f'{target}_shift']!=0, features], model_file, trans_file_corr_diff, target_name))
+    
+    df_mc.loc[:,kinrho] = inverse_transform(df_mc.loc[:,kinrho], transformer_file, kinrho)
 
-    df_mc.loc[:,kinrho+variables] = inverse_transform(df_mc.loc[:,kinrho+variables], transformer_file, kinrho+variables)
-
-    for var in variables: 
-        df_mc[f'{var}_corr_final'] = df_mc[var] + df_diff[f'{var}_corr_diff']
     print(df_mc.keys())
     print(df_mc)
 
-#    df_mc.to_hdf('{}/df_mc_{}_{}_corr_final.h5'.format(outdir,EBEE,data_type),'df',mode='w',format='t')
     df_mc.to_hdf('{}/df_mc_{}_Iso_{}_corr_final.h5'.format(outdir,EBEE,data_type),'df',mode='w',format='t')
  
 

@@ -29,7 +29,7 @@ if gpus:
 
 
 
-def trainPBNN(X, Y, num_hidden_layers=3, num_units=None, act=None, sample_weight=None, opt='SGD', lr=0.1, dp=None, use_proba_output=False, batch_size=64, epochs=10, checkpoint_dir='./ckpt', save_file=None, evaluate_data=None, model_plot=None):
+def trainPBNN(X, Y, num_hidden_layers=3, num_units=None, act=None, sample_weight=None, opt='SGD', lr=0.1, dp=None, use_proba_output=False, num_normal_layers=0, batch_size=64, epochs=10, checkpoint_dir='./ckpt', save_file=None, evaluate_data=None, model_plot=None):
 
     # cleanup
     try:
@@ -60,7 +60,7 @@ def trainPBNN(X, Y, num_hidden_layers=3, num_units=None, act=None, sample_weight
     with strategy.scope():
 #        model = load_or_restore_model(checkpoint_dir, qs, input_dim, num_hidden_layers, num_units, act, qweights, dp, gauss_std)
         print('Creating a new model')
-        model = get_compiled_model(input_dim, output_dim, num_hidden_layers, num_units, act, train_size, opt, lr, dp, use_proba_output)
+        model = get_compiled_model(input_dim, output_dim, num_hidden_layers, num_units, act, train_size, opt, lr, dp, use_proba_output, num_normal_layers)
 
     model.summary()
     history = model.fit(
@@ -82,7 +82,7 @@ def trainPBNN(X, Y, num_hidden_layers=3, num_units=None, act=None, sample_weight
     if save_file is not None:
         model_arch = {'input_dim': input_dim, 'output_dim': output_dim, 'num_hidden_layers': num_hidden_layers, 
                       'num_units': num_units, 'act': act, 'train_size': train_size, 'opt': opt, 'lr': lr, 
-                      'dp': dp, 'use_proba_output': use_proba_output}
+                      'dp': dp, 'use_proba_output': use_proba_output, 'num_normal_layers': num_normal_layers}
         with open(f'{save_file}.json', 'w') as f: 
             json.dump(model_arch, f)
         model.save_weights(save_file) 
@@ -109,9 +109,10 @@ def predict(X, model_from=None, nTrials=1, transformer=None, target_name=None):
         model_arch = json.load(f)
 
     with tf.distribute.MirroredStrategy().scope():
-        model = get_compiled_model(model_arch['input_dim'], model_arch['output_dim'], model_arch['num_hidden_layers'], 
-            model_arch['num_units'], model_arch['act'], model_arch['train_size'], model_arch['opt'], model_arch['lr'], 
-            model_arch['dp'], model_arch['use_proba_output'])
+        model = get_compiled_model(**model_arch) 
+#        model = get_compiled_model(model_arch['input_dim'], model_arch['output_dim'], model_arch['num_hidden_layers'], 
+#            model_arch['num_units'], model_arch['act'], model_arch['train_size'], model_arch['opt'], model_arch['lr'], 
+#            model_arch['dp'], model_arch['use_proba_output'])
 
     model.load_weights(model_from)
 
@@ -138,9 +139,10 @@ def predictMean(X, model_from=None, transformer=None, target_name=None):
         model_arch = json.load(f)
 
     with tf.distribute.MirroredStrategy().scope():
-        model = get_compiled_model(model_arch['input_dim'], model_arch['output_dim'], model_arch['num_hidden_layers'], 
-            model_arch['num_units'], model_arch['act'], model_arch['train_size'], model_arch['opt'], model_arch['lr'], 
-            model_arch['dp'], model_arch['use_proba_output'])
+#        model = get_compiled_model(model_arch['input_dim'], model_arch['output_dim'], model_arch['num_hidden_layers'], 
+#            model_arch['num_units'], model_arch['act'], model_arch['train_size'], model_arch['opt'], model_arch['lr'], 
+#            model_arch['dp'], model_arch['use_proba_output'])
+        model = get_compiled_model(**model_arch) 
 
     model.load_weights(model_from)
     predY = model(X).mean()
@@ -162,9 +164,10 @@ def predictStd(X, model_from=None, transformer=None, target_name=None):
         model_arch = json.load(f)
 
     with tf.distribute.MirroredStrategy().scope():
-        model = get_compiled_model(model_arch['input_dim'], model_arch['output_dim'], model_arch['num_hidden_layers'], 
-            model_arch['num_units'], model_arch['act'], model_arch['train_size'], model_arch['opt'], model_arch['lr'], 
-            model_arch['dp'], model_arch['use_proba_output'])
+        model = get_compiled_model(**model_arch) 
+#        model = get_compiled_model(model_arch['input_dim'], model_arch['output_dim'], model_arch['num_hidden_layers'], 
+#            model_arch['num_units'], model_arch['act'], model_arch['train_size'], model_arch['opt'], model_arch['lr'], 
+#            model_arch['dp'], model_arch['use_proba_output'])
 
     model.load_weights(model_from)
     predY = model(X).stddev()
@@ -179,13 +182,20 @@ def predictStd(X, model_from=None, transformer=None, target_name=None):
     return predY
         
 
-def get_compiled_model(input_dim, output_dim, num_hidden_layers, num_units, act, train_size=1, opt='SGD', lr=0.1, dp=None, use_proba_output=False):
+def get_compiled_model(input_dim, output_dim, num_hidden_layers, num_units, act, train_size=1, opt='SGD', lr=0.1, dp=None, use_proba_output=False, num_normal_layers=0):
 
     inpt = Input((input_dim,), name='inpt')
 
     x = inpt
-    
-    for i in range(num_hidden_layers): 
+
+    for i in range(num_normal_layers): 
+        x = Dense(num_units[i], use_bias=True, kernel_initializer='he_normal', bias_initializer='he_normal',
+                  kernel_regularizer=regularizers.l2(1.e-3), 
+                  activation=act[i])(x)
+        if dp is not None:
+            x = Dropout(dp[i])(x)
+
+    for i in range(num_normal_layers, num_hidden_layers): 
         x = tfp.layers.DenseVariational(
             units = num_units[i], 
             make_prior_fn = prior, 

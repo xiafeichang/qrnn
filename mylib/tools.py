@@ -34,4 +34,18 @@ def load_clf(clf_name):
     clf = pickle.load(gzip.open(clf_name))
     return clf['clf']
 
+def sec2HMS(sec):
+    d = 0
+    h = 0
+
+    m = sec // 60
+    s = sec % 60
+    if m > 59: 
+        h = m // 60
+        m = m % 60
+        if h > 23:
+            d = h // 24
+            h = h % 24
+
+    return int(d), int(h), int(m), s
 

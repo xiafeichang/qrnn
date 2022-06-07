@@ -45,8 +45,8 @@ def main(options):
     batch_size = pow(2, 13)
 #    num_hidden_layers = 5
 #    num_units = [160, 120, 100, 80, 50]
-    num_hidden_layers = 3
-    num_units = [20, 15, 10]
+    num_hidden_layers = 10
+    num_units = [30-i for i in range(num_hidden_layers)]
     act = ['tanh' for _ in range(num_hidden_layers)]
 #    act = ['tanh','exponential', 'softplus', 'elu', 'tanh']
     dropout = [0.1, 0.1, 0.1, 0.1, 0.1]

@@ -23,10 +23,16 @@ def fit_standard_scaler(df, variables, file_name):
     except KeyError:
         print('No weight found!')
         sample_weight = None
-    for var in variables: 
+    if not isinstance(variables, list): 
+        var = variables
         transformer = preprocessing.StandardScaler()
-        transformer.fit(np.array(df[var]).reshape(-1,1), sample_weight=sample_weight)
+        transformer.fit(np.array(df).reshape(-1,1), sample_weight=sample_weight)
         pickle.dump(transformer, gzip.open('transformer/{}_{}.pkl'.format(file_name, var), 'wb'),protocol=pickle.HIGHEST_PROTOCOL)
+    else: 
+        for var in variables: 
+            transformer = preprocessing.StandardScaler()
+            transformer.fit(np.array(df[var]).reshape(-1,1), sample_weight=sample_weight)
+            pickle.dump(transformer, gzip.open('transformer/{}_{}.pkl'.format(file_name, var), 'wb'),protocol=pickle.HIGHEST_PROTOCOL)
 
 def fit_quantile_transformer(df, variables, file_name, output_distribution='uniform', random_state=None):
     for var in variables: 
