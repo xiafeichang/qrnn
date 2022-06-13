@@ -45,8 +45,8 @@ def main(options):
     batch_size = pow(2, 13)
 #    num_hidden_layers = 5
 #    num_units = [160, 120, 100, 80, 50]
-    num_hidden_layers = 10
-    num_units = [30-i for i in range(num_hidden_layers)]
+    num_hidden_layers = 7
+    num_units = [50-2*i for i in range(num_hidden_layers)]
     act = ['tanh' for _ in range(num_hidden_layers)]
 #    act = ['tanh','exponential', 'softplus', 'elu', 'tanh']
     dropout = [0.1, 0.1, 0.1, 0.1, 0.1]
@@ -54,8 +54,8 @@ def main(options):
 
     train_start = time.time()
 
-    modeldir = 'test/chained_models'
-    plotsdir = 'test/plots'
+    modeldir = 'chained_models'
+    plotsdir = 'plots'
 
     sample_weight = df_train.loc[:,'ml_weight']
     features = kinrho + variables

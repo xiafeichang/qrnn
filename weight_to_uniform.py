@@ -1,3 +1,4 @@
+import os
 import argparse
 import numpy as np
 import pandas as pd
@@ -55,13 +56,18 @@ def main(options):
     EBEE = options.EBEE 
 #    df_type = 'train'
     
+    dfDir = 'tmp_dfs/split0.9'
+    outDir = 'tmp_dfs/weighted0.9'
+    if not os.path.exists(outDir): 
+        os.makedirs(outDir)
+
     for df_type in ('train', 'test'):
         inputfile = 'df_{}_{}_Iso_{}.h5'.format(data_key, EBEE, df_type) # for isolation 
 #        inputfile = 'df_{}_{}_{}.h5'.format(data_key, EBEE, df_type)
-        print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>weighting file: ', inputfile)
+        print(f'>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>weighting file: {dfDir}/{inputfile}')
 #        df = pd.read_hdf('dataframes/{}'.format(inputfile))
         try: 
-            df = pd.read_hdf('from_massi/{}'.format(inputfile))
+            df = pd.read_hdf(f'{dfDir}/{inputfile}')
         except FileNotFoundError as fe: 
             print(f'{fe}\ncontinue')
             continue
@@ -74,8 +80,8 @@ def main(options):
         df_weighted = assign_weights(df, weights, xname, xedges, yname, yedges)
 
         print('weighted dataframe: \n', df_weighted)
-        df_weighted.to_hdf('from_massi/weighted_dfs/{}'.format(inputfile),'df',mode='w',format='t')
-        print('dataframe {} has been created'.format(inputfile))
+        df_weighted.to_hdf(f'{outDir}/{inputfile}','df',mode='w',format='t')
+        print(f'dataframe {outDir}/{inputfile} has been created')
 
 #    for iso in (True, False):
 #        if iso: 

@@ -49,3 +49,19 @@ def sec2HMS(sec):
 
     return int(d), int(h), int(m), s
 
+def mathSciNot(x, lim=(-2,3), dig=2):
+    exp = int(np.log10(x))
+    if exp >= lim[0] and exp <= lim[1]: 
+        outstr = '{:.' + str(dig) + 'f}'
+        return _shorterStr(outstr.format(x), '{:g}'.format(x))
+    else:
+        quo = x / pow(10., exp)
+        if quo > 5. :
+            quo /= 10.
+            exp += 1
+        outstr = '{:.' + str(dig) + 'f}'
+        return _shorterStr(outstr.format(quo), '{:g}'.format(quo)) + r' $\times 10^{'+str(exp)+'}$'
+
+def _shorterStr(s1,s2):
+    return s1 if len(s1) < len(s2) else s2
+

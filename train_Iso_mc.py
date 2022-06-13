@@ -25,8 +25,8 @@ def main(options):
     if options.var_type == 'Ph':
         variables = ['probePhoIso']
     elif options.var_type == 'Ch':
-        variables = ['probeChIso03','probeChIso03worst']
-#        variables = ['probeChIso03worst','probeChIso03']
+#        variables = ['probeChIso03','probeChIso03worst']
+        variables = ['probeChIso03worst','probeChIso03']
     else: 
         raise ValueError('var_type must be "Ph" (for photon) or "Ch" (for charged)')
     kinrho = ['probePt','probeScEta','probePhi','rho'] 
@@ -43,8 +43,8 @@ def main(options):
     data_key = 'mc'
     EBEE = options.EBEE 
      
-    inputtrain = 'weighted_dfs/df_{}_{}_Iso_train.h5'.format(data_key, EBEE)
-    inputtest = 'weighted_dfs/df_{}_{}_Iso_test.h5'.format(data_key, EBEE)
+#    inputtrain = 'weighted_dfs/df_{}_{}_Iso_train.h5'.format(data_key, EBEE)
+    inputtrain = 'tmp_dfs/weighted0.9/df_{}_{}_Iso_train.h5'.format(data_key, EBEE)
    
     #load dataframe
 #    nEvt = 3500000

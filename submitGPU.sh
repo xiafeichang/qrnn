@@ -27,12 +27,16 @@ nEvt=$2
 #python train_SS_mc.py -e ${EBEE} -n ${nEvt} -r yes 
 
 #python train_Iso.py -e ${EBEE} -n ${nEvt} -v Ph
-python train_Iso_mc.py -e ${EBEE} -n ${nEvt} -v Ph -r yes
+#python train_Iso_mc.py -e ${EBEE} -n ${nEvt} -v Ph -r yes
 #python train_Iso.py -e ${EBEE} -n ${nEvt} -v Ch
-python train_Iso_mc.py -e ${EBEE} -n ${nEvt} -v Ch -r yes
+#python train_Iso_mc.py -e ${EBEE} -n ${nEvt} -v Ch -r yes
 #python check_results.py -e ${EBEE} -n ${nEvt}
 
-for EBEE in "EE"; # "EB";
+#python train_final_SS.py -e ${EBEE} -n ${nEvt} 
+#python train_final_Iso.py -e ${EBEE} -n ${nEvt} -v Ph 
+#python train_final_Iso.py -e ${EBEE} -n ${nEvt} -v Ch 
+
+for EBEE in "EB" "EE"; #  ${EBEE}; 
 do 
     for data_type in "test" "train"; 
     do
@@ -44,11 +48,7 @@ do
     done
 done
 
-#python correct_mc.py -e $1 -t $2 
-
-#python train_final_SS.py -e ${EBEE} -n ${nEvt} 
-#python train_final_Iso.py -e ${EBEE} -n ${nEvt} -v Ph 
-#python train_final_Iso.py -e ${EBEE} -n ${nEvt} -v Ch 
+#python correct_mc.py -e ${EBEE} -t $2 
 
 #python train_final_SS_uncer.py -e ${EBEE} -n ${nEvt} 
 

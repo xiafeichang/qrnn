@@ -15,43 +15,46 @@ from mylib.tools import *
 def main(options):
     variables = ['probeCovarianceIeIp','probeS4','probeR9','probePhiWidth','probeSigmaIeIe','probeEtaWidth']
     isoVarsPh = ['probePhoIso']
-    isoVarsCh = ['probeChIso03','probeChIso03worst']
-#    isoVarsCh = ['probeChIso03worst','probeChIso03']
+#    isoVarsCh = ['probeChIso03','probeChIso03worst']
+    isoVarsCh = ['probeChIso03worst','probeChIso03']
     preshower = ['probeesEnergyOverSCRawEnergy']
     kinrho = ['probePt','probeScEta','probePhi','rho'] 
     
     EBEE = options.EBEE
     data_type = options.data_type
-    final = False # here final stands for if correct preshower variable and compute photon ID MVA
+    final = True # here final stands for if correct preshower variable and compute photon ID MVA
     
-#    df_mc = (pd.read_hdf('weighted_dfs/df_mc_{}_{}.h5'.format(EBEE,data_type))).reset_index(drop=True)
-    df_mc = (pd.read_hdf('weighted_dfs/df_mc_{}_Iso_{}.h5'.format(EBEE,data_type))).reset_index(drop=True)
+#    df_mc = (pd.read_hdf(f'tmp_dfs/split0.9/df_mc_{EBEE}_Iso_{data_type}.h5')).reset_index(drop=True)
+#    df_mc = (pd.read_hdf(f'tmp_dfs/all/df_mc_{EBEE}_all.h5')).reset_index(drop=True)
+#    df_mc = (pd.read_hdf(f'dfs_corr/df_mc_{EBEE}_all_corr.h5')).reset_index(drop=True)
+    df_mc = (pd.read_hdf('weighted_dfs/df_mc_{}_{}.h5'.format(EBEE,data_type))).reset_index(drop=True)
+#    df_mc = (pd.read_hdf('weighted_dfs/df_mc_{}_Iso_{}.h5'.format(EBEE,data_type))).reset_index(drop=True)
 
     modeldir = 'chained_models'
-    outdir = 'dfs_corr'
+    outdir   = 'dfs_corr'
  
     # shift isolation variables
-    print(f'shifting mc with classifiers and tail regressor for {isoVarsPh}')
-    df_mc['{}_shift'.format(isoVarsPh[0])] = parallelize(applyShift,
-        df_mc.loc[:,kinrho], df_mc.loc[:,isoVarsPh[0]],
-        load_clf('{}/mc_{}_clf_{}.pkl'.format(modeldir, EBEE, isoVarsPh[0])), 
-        load_clf('{}/data_{}_clf_{}.pkl'.format(modeldir, EBEE, isoVarsPh[0])), 
-        '{}/mc_{}_{}'.format(modeldir, EBEE, isoVarsPh[0]),
-        final_reg = False,
-        ) 
-
-    print(f'shifting mc with classifiers and tail regressor for {isoVarsCh}')
-    # VERY IMPORTANT! Note the order of targets here
-    Y_shifted = parallelize(apply2DShift,
-        df_mc.loc[:,kinrho], df_mc.loc[:,['probeChIso03','probeChIso03worst']],
-        load_clf('{}/mc_{}_clf_{}_{}.pkl'.format(modeldir, EBEE, isoVarsCh[0], isoVarsCh[1])), 
-        load_clf('{}/data_{}_clf_{}_{}.pkl'.format(modeldir, EBEE, isoVarsCh[0], isoVarsCh[1])), 
-        '{}/mc_{}_tReg_probeChIso03'.format(modeldir, EBEE), 
-        '{}/mc_{}_tReg_probeChIso03worst'.format(modeldir, EBEE), 
-        final_reg = False,
-        ) 
-    df_mc['probeChIso03_shift'] = Y_shifted[:,0]
-    df_mc['probeChIso03worst_shift'] = Y_shifted[:,1]
+#    print(f'shifting mc with classifiers and tail regressor for {isoVarsPh}')
+#    df_mc['{}_shift'.format(isoVarsPh[0])] = parallelize(applyShift,
+#        df_mc.loc[:,kinrho], df_mc.loc[:,isoVarsPh[0]],
+#        load_clf('{}/mc_{}_clf_{}.pkl'.format(modeldir, EBEE, isoVarsPh[0])), 
+#        load_clf('{}/data_{}_clf_{}.pkl'.format(modeldir, EBEE, isoVarsPh[0])), 
+#        '{}/mc_{}_{}'.format(modeldir, EBEE, isoVarsPh[0]),
+#        final_reg = False,
+#        ) 
+#
+#    print(f'shifting mc with classifiers and tail regressor for {isoVarsCh}')
+#    # VERY IMPORTANT! Note the order of targets here
+#    Y_shifted = parallelize(apply2DShift,
+#        df_mc.loc[:,kinrho], df_mc.loc[:,['probeChIso03','probeChIso03worst']],
+#        load_clf('{}/mc_{}_clf_{}_{}.pkl'.format(modeldir, EBEE, isoVarsCh[0], isoVarsCh[1])), 
+#        load_clf('{}/data_{}_clf_{}_{}.pkl'.format(modeldir, EBEE, isoVarsCh[0], isoVarsCh[1])), 
+#        '{}/mc_{}_tReg_probeChIso03'.format(modeldir, EBEE), 
+#        '{}/mc_{}_tReg_probeChIso03worst'.format(modeldir, EBEE), 
+#        final_reg = False,
+#        ) 
+#    df_mc['probeChIso03_shift'] = Y_shifted[:,0]
+#    df_mc['probeChIso03worst_shift'] = Y_shifted[:,1]
 
      
     # transform features and target to apply qrnn
@@ -68,16 +71,16 @@ def main(options):
         vars_qrnn = variables.copy() 
     else: 
         vars_qrnn = variables+preshower
-#    for target in variables: 
-#        features = kinrho + ['{}_corr'.format(x) for x in variables[:variables.index(target)]]
-#        
-#        X = df_mc.loc[:,features]
-#        Y = df_mc.loc[:,target]
-#        
-#        models_mc = '{}/{}_{}_{}'.format(modeldir, 'mc', EBEE, target)
-#        models_d = '{}/{}_{}_{}'.format(modeldir, 'data', EBEE, target)
-#        print('Correct {} with features {}'.format(target, features))
-#        df_mc['{}_corr'.format(target)] = parallelize(applyCorrection, X, Y, models_mc, models_d, diz=False)
+    for target in variables: 
+        features = kinrho + ['{}_corr'.format(x) for x in variables[:variables.index(target)]]
+        
+        X = df_mc.loc[:,features]
+        Y = df_mc.loc[:,target]
+        
+        models_mc = '{}/{}_{}_{}'.format(modeldir, 'mc', EBEE, target)
+        models_d = '{}/{}_{}_{}'.format(modeldir, 'data', EBEE, target)
+        print('Correct {} with features {}'.format(target, features))
+        df_mc['{}_corr'.format(target)] = parallelize(applyCorrection, X, Y, models_mc, models_d, diz=False)
 
     if final:
         print('Correct {} with features {}'.format(preshower[0], features))
@@ -96,54 +99,55 @@ def main(options):
             df_mc['{}_corr'.format(preshower[0])] = 0.
 
     
-    print('Correct {} with features {}'.format(isoVarsPh[0], kinrho))
-    df_mc['{}_corr'.format(isoVarsPh[0])] = parallelize(applyCorrection,
-        df_mc.loc[:,kinrho], df_mc.loc[:,'{}_shift'.format(isoVarsPh[0])], 
-        '{}/{}_{}_{}'.format(modeldir, 'mc', EBEE, isoVarsPh[0]), 
-        '{}/{}_{}_{}'.format(modeldir, 'data', EBEE, isoVarsPh[0]), 
-        diz=True, 
-        )
-
-    print(f'correcting mc with models for {isoVarsCh}')
-    for target in isoVarsCh: 
-        features = kinrho + ['{}_corr'.format(x) for x in isoVarsCh[:isoVarsCh.index(target)]]
-        
-        X = df_mc.loc[:,features]
-        Y = df_mc.loc[:,'{}_shift'.format(target)]
-        
-        models_mc = '{}/{}_{}_{}'.format(modeldir, 'mc', EBEE, target)
-        models_d = '{}/{}_{}_{}'.format(modeldir, 'data', EBEE, target)
-        print('Correct {} with features {}'.format(target, features))
-        df_mc['{}_corr'.format(target)] = parallelize(applyCorrection, X, Y, models_mc, models_d, diz=True)
+#    print('Correct {} with features {}'.format(isoVarsPh[0], kinrho))
+#    df_mc['{}_corr'.format(isoVarsPh[0])] = parallelize(applyCorrection,
+#        df_mc.loc[:,kinrho], df_mc.loc[:,'{}_shift'.format(isoVarsPh[0])], 
+#        '{}/{}_{}_{}'.format(modeldir, 'mc', EBEE, isoVarsPh[0]), 
+#        '{}/{}_{}_{}'.format(modeldir, 'data', EBEE, isoVarsPh[0]), 
+#        diz=True, 
+#        )
+#
+#    print(f'correcting mc with models for {isoVarsCh}')
+#    for target in isoVarsCh: 
+#        features = kinrho + ['{}_corr'.format(x) for x in isoVarsCh[:isoVarsCh.index(target)]]
+#        
+#        X = df_mc.loc[:,features]
+#        Y = df_mc.loc[:,'{}_shift'.format(target)]
+#        
+#        models_mc = '{}/{}_{}_{}'.format(modeldir, 'mc', EBEE, target)
+#        models_d = '{}/{}_{}_{}'.format(modeldir, 'data', EBEE, target)
+#        print('Correct {} with features {}'.format(target, features))
+#        df_mc['{}_corr'.format(target)] = parallelize(applyCorrection, X, Y, models_mc, models_d, diz=True)
  
     vars_corr = ['{}_corr'.format(target) for target in variables] 
-#    df_mc.loc[:,vars_corr] = inverse_transform(df_mc.loc[:,vars_corr], transformer_file, vars_corr)
+    df_mc.loc[:,vars_corr] = inverse_transform(df_mc.loc[:,vars_corr], transformer_file, vars_corr)
     df_mc.loc[:,variables] = inverse_transform(df_mc.loc[:,variables], transformer_file, variables)
     df_mc.loc[:,kinrho] = inverse_transform(df_mc.loc[:,kinrho], transformer_file, kinrho)
 
-    if final:
-        if EBEE != 'EB': 
-            vars_corr = vars_corr + ['{}_corr'.format(var) for var in preshower]
-        isoVars = isoVarsPh+isoVarsCh
-        isoVars_shift = ['{}_shift'.format(var) for var in isoVars]
-        isoVars_corr = ['{}_corr'.format(var) for var in isoVars]
-        print(df_mc.loc[:,kinrho+vars_qrnn+vars_corr+isoVars+isoVars_shift+isoVars_corr])
-        print('time spent in correction: {} s'.format(time() - corr_start))
-
-        id_start = time()
-        weightsEB = 'phoIDmva_weight/HggPhoId_94X_barrel_BDT_v2.weights.xml'
-        weightsEE = 'phoIDmva_weight/HggPhoId_94X_endcap_BDT_v2.weights.xml'
-        
-        phoIDname = 'probePhoIdMVA'
-        print('Compute photon ID MVA for uncorrected mc')
-        df_mc[phoIDname] = helpComputeIdMva(weightsEB, weightsEE, EBEE, vars_qrnn+isoVars+preshower, df_mc, 'data', False) # +isoVars 
-        print('Compute photon ID MVA for corrected mc')
-        df_mc['{}_corr'.format(phoIDname)] = helpComputeIdMva(weightsEB, weightsEE, EBEE, vars_qrnn+isoVars+preshower, df_mc, 'qr', False) # +isoVars 
-        print('time spent in computing photon ID MVA: {} s'.format(time() - id_start))
+#    if final:
+#        if EBEE != 'EB': 
+#            vars_corr = vars_corr + ['{}_corr'.format(var) for var in preshower]
+#        isoVars = isoVarsPh+isoVarsCh
+#        isoVars_shift = ['{}_shift'.format(var) for var in isoVars]
+#        isoVars_corr = ['{}_corr'.format(var) for var in isoVars]
+#        print(df_mc.loc[:,kinrho+vars_qrnn+vars_corr+isoVars+isoVars_shift+isoVars_corr])
+#        print('time spent in correction: {} s'.format(time() - corr_start))
+#
+#        id_start = time()
+#        weightsEB = 'phoIDmva_weight/HggPhoId_94X_barrel_BDT_v2.weights.xml'
+#        weightsEE = 'phoIDmva_weight/HggPhoId_94X_endcap_BDT_v2.weights.xml'
+#        
+#        phoIDname = 'probePhoIdMVA'
+#        print('Compute photon ID MVA for uncorrected mc')
+#        df_mc[phoIDname] = helpComputeIdMva(weightsEB, weightsEE, EBEE, vars_qrnn+isoVars, df_mc, 'data', False) # +isoVars 
+#        print('Compute photon ID MVA for corrected mc')
+#        df_mc['{}_corr'.format(phoIDname)] = helpComputeIdMva(weightsEB, weightsEE, EBEE, vars_qrnn+isoVars, df_mc, 'qr', False) # +isoVars 
+#        print('time spent in computing photon ID MVA: {} s'.format(time() - id_start))
 
     print(df_mc.keys())
-#    df_mc.to_hdf('{}/df_mc_{}_{}_corr.h5'.format(outdir,EBEE,data_type),'df',mode='w',format='t')
-    df_mc.to_hdf('{}/df_mc_{}_Iso_{}_corr.h5'.format(outdir,EBEE,data_type),'df',mode='w',format='t')
+#    df_mc.to_hdf('{}/df_mc_{}_all_corr.h5'.format(outdir,EBEE),'df',mode='w',format='t')
+    df_mc.to_hdf('{}/df_mc_{}_{}_corr.h5'.format(outdir,EBEE,data_type),'df',mode='w',format='t')
+#    df_mc.to_hdf('{}/df_mc_{}_Iso_{}_corr.h5'.format(outdir,EBEE,data_type),'df',mode='w',format='t')
         
 
 

@@ -1,3 +1,4 @@
+import os
 import argparse
 import uproot
 import pandas as pd
@@ -76,6 +77,8 @@ def main(options):
     
     cutIso = {'EB': 'tagPt>40 and tagR9>0.8 and mass>80 and mass<100 and probeSigmaIeIe<0.0105 and tagScEta>-2.1 and tagScEta<2.1 and probePassEleVeto==0',
               'EE': 'tagPt>40 and tagR9>0.8 and mass>80 and mass<100 and probeSigmaIeIe<0.028 and tagScEta>-2.1 and tagScEta<2.1 and probePassEleVeto==0'}
+
+    cutplots = 'tagPt>40 and probePt>20 and mass>80 and mass<100 and probePassEleVeto==0 and tagScEta<2.5 and tagScEta>-2.5' 
     
     data_key = options.data_key
     EBEE = options.EBEE 
@@ -88,11 +91,15 @@ def main(options):
 
 #    make_dataframe(path[data_key], tree[data_key], data_key, EBEE, dfDir, 'df_{}_all'.format(data_key, EBEE))
 
-    make_dataframe(path[data_key], tree[data_key], data_key, EBEE, dfDir, 'df_{}_{}'.format(data_key, EBEE), cut, split)
+#    make_dataframe(path[data_key], tree[data_key], data_key, EBEE, dfDir, 'df_{}_{}'.format(data_key, EBEE), cut, split)
     make_dataframe(path[data_key], tree[data_key], data_key, EBEE, dfDir, 'df_{}_{}_Iso'.format(data_key, EBEE), cutIso[EBEE], split)
 
 #    make_dataframe(path[data_key], tree[data_key], data_key, EBEE, dfDir, 'df_{}_{}'.format(data_key, EBEE), cut)
 #    make_dataframe(path[data_key], tree[data_key], data_key, EBEE, dfDir, 'df_{}_{}_Iso'.format(data_key, EBEE), cutIso[EBEE])
+
+#    make_dataframe(path[data_key], tree[data_key], data_key, EBEE, dfDir, 'df_{}_{}_all'.format(data_key, EBEE), cutplots)
+
+
 
 if __name__ == '__main__': 
     parser = argparse.ArgumentParser()

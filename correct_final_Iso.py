@@ -17,11 +17,11 @@ def main(options):
     data_type = options.data_type
     
 #    df_mc = (pd.read_hdf('weighted_dfs/df_mc_{}_Iso_{}.h5'.format(EBEE,data_type))).reset_index(drop=True)
+    df_mc = (pd.read_hdf('dfs_corr/df_mc_{}_Iso_{}_corr.h5'.format(EBEE,data_type))).reset_index(drop=True)
+#    df_mc = (pd.read_hdf('dfs_corr/df_mc_{}_Iso_{}_corr_final.h5'.format(EBEE,data_type))).reset_index(drop=True)
 
-    df_mc = (pd.read_hdf('test/dfs_corr/df_mc_{}_Iso_{}_corr_final.h5'.format(EBEE,data_type))).reset_index(drop=True)
-
-    modeldir = 'test/chained_models'
-    outdir = 'test/dfs_corr'
+    modeldir = 'chained_models'
+    outdir = 'dfs_corr'
  
     transformer_file = 'data_{}'.format(EBEE)
     df_mc.loc[:,kinrho] = transform(df_mc.loc[:,kinrho], transformer_file, kinrho)
