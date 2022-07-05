@@ -73,7 +73,7 @@ def trainNN(X, Y, num_hidden_layers=3, num_units=None, act=None, sample_weight=N
         callbacks = [
             EarlyStopping(monitor='val_loss', patience=15, verbose=1),
             ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=6, verbose=1), 
-            ModelCheckpoint(filepath=checkpoint_dir + "/ckpt", save_freq="epoch"),
+#            ModelCheckpoint(filepath=checkpoint_dir + "/ckpt", save_freq="epoch"),
             TerminateOnNaN()
             ], 
         shuffle = True,

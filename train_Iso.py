@@ -31,8 +31,13 @@ def main(options):
     data_key = 'data'
     EBEE = options.EBEE 
      
-#    inputtrain = 'weighted_dfs/df_{}_{}_Iso_train.h5'.format(data_key, EBEE)
-    inputtrain = 'tmp_dfs/weighted0.9/df_{}_{}_Iso_train.h5'.format(data_key, EBEE)
+    spl = options.split
+    if spl in [1, 2]: 
+        inputtrain = 'tmp_dfs/weightedsys/df_{}_{}_Iso_train_split{}.h5'.format(data_key, EBEE, spl)
+    else: 
+        inputtrain = 'weighted_dfs/df_{}_{}_Iso_train.h5'.format(data_key, EBEE)
+        print(f"Wrong argument '-s' ('--split'), argument must have value 1 or 2. Now using defalt dataframe {inputtrain}")
+#    inputtrain = 'tmp_dfs/weighted0.9/df_{}_{}_Iso_train.h5'.format(data_key, EBEE)
    
     #load dataframe
 #    nEvt = 3500000
@@ -41,8 +46,12 @@ def main(options):
 #    df_train = ((pd.read_hdf('from_massi/weighted_dfs/df_data_EB_Iso_test.h5').loc[:,kinrho+variables+weight])[:nEvt]).reset_index(drop=True)
     print(df_train)
     
-    modeldir = 'chained_models'
-    plotsdir = 'plots'
+    if spl in [1, 2]: 
+        modeldir = f'models/split{spl}'
+        plotsdir = f'plots/split{spl}'
+    else:
+        modeldir = 'chained_models'
+        plotsdir = 'plots'
 
 
 
@@ -160,5 +169,7 @@ if __name__ == "__main__":
     requiredArgs.add_argument('-e','--EBEE', action='store', type=str, required=True)
     requiredArgs.add_argument('-n','--nEvt', action='store', type=int, required=True)
     requiredArgs.add_argument('-v','--var_type', action='store', type=str, required=True)
+    optArgs = parser.add_argument_group('Optional Arguments')
+    optArgs.add_argument('-s','--split', action='store', type=int)
     options = parser.parse_args()
     main(options)

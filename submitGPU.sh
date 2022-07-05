@@ -4,8 +4,8 @@
 #SBATCH --account=gpu_gres               # to access gpu resources
 #SBATCH --partition=gpu                                           
 #SBATCH --nodes=1                        # request to run job on single node                                       
-#SBATCH --ntasks=10                      # request 10 CPU's (t3gpu01/02: balance between CPU and GPU : 5CPU/1GPU)      
-#SBATCH --gres=gpu:2                     # request  for two GPU's on machine, this is total  amount of GPUs for job        
+#SBATCH --ntasks=5                      # request 10 CPU's (t3gpu01/02: balance between CPU and GPU : 5CPU/1GPU)      
+#SBATCH --gres=gpu:1                     # request  for two GPU's on machine, this is total  amount of GPUs for job        
 #SBATCH --mem=40G                        # memory (per job)
 #SBATCH --time=3-12:00                   # time  in format DD-HH:MM
 ##SBATCH --nodelist=t3gpu02               # submit to a specific node
@@ -32,17 +32,29 @@ nEvt=$2
 #python train_Iso_mc.py -e ${EBEE} -n ${nEvt} -v Ch -r yes
 #python check_results.py -e ${EBEE} -n ${nEvt}
 
-#python train_final_SS.py -e ${EBEE} -n ${nEvt} 
-#python train_final_Iso.py -e ${EBEE} -n ${nEvt} -v Ph 
-#python train_final_Iso.py -e ${EBEE} -n ${nEvt} -v Ch 
+#EBEE=(EB EE)
+#nEvt=(3600000 1000000)
+#for i in ${!EBEE[@]}; 
+#do
+#    python train_final_SS.py -e ${EBEE[i]} -n ${nEvt[i]} 
+#done
+#
+#nEvt=(3500000 1800000)
+#for i in ${!EBEE[@]}; 
+#do
+#    python train_final_Iso.py -e ${EBEE[i]} -n ${nEvt[i]} -v Ph 
+#    python train_final_Iso.py -e ${EBEE[i]} -n ${nEvt[i]} -v Ch 
+#done
 
-for EBEE in "EB" "EE"; #  ${EBEE}; 
+python train_final_preshower.py
+
+for EBEE in "EE"; # "EE" "EB" ; 
 do 
     for data_type in "test" "train"; 
     do
         echo correcting mc for ${EBEE} ${data_type}
-        python correct_mc.py -e ${EBEE} -t ${data_type} 
-        #python correct_final.py -e ${EBEE} -t ${data_type} 
+        #python correct_mc.py -e ${EBEE} -t ${data_type} 
+        python correct_final.py -e ${EBEE} -t ${data_type} 
         #python correct_final_Iso.py -e ${EBEE} -t ${data_type} 
         #python correct_final_uncer.py -e ${EBEE} -t ${data_type} 
     done

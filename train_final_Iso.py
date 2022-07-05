@@ -22,8 +22,14 @@ def main(options):
 
     EBEE = options.EBEE 
      
-    inputdata = 'weighted_dfs/df_data_{}_Iso_train.h5'.format(EBEE)
-    inputmc = 'dfs_corr/df_mc_{}_Iso_train_corr.h5'.format(EBEE)
+    spl = options.split
+    if spl in [1, 2]: 
+        inputmc = 'dfs_sys/split{}/df_mc_{}_Iso_train_split{}_corr.h5'.format(spl, EBEE, spl)
+    else: 
+        inputmc = 'dfs_corr/df_mc_{}_Iso_train_corr.h5'.format(EBEE)
+        print(f"Wrong argument '-s' ('--split'), argument must have value 1 or 2. Now using defalt dataframe {inputtrain}")
+#    inputdata = 'weighted_dfs/df_data_{}_Iso_train.h5'.format(EBEE)
+#    inputmc = 'dfs_corr/df_mc_{}_Iso_train_corr.h5'.format(EBEE)
    
     #load dataframe
     nEvt = options.nEvt
@@ -37,15 +43,22 @@ def main(options):
     batch_size = pow(2, 13)
 #    num_hidden_layers = 5
 #    num_units = [160, 120, 100, 80, 50]
-    num_hidden_layers = 7
-    num_units = [50-2*i for i in range(num_hidden_layers)]
+    num_hidden_layers = 10
+    num_units = [30-1*i for i in range(num_hidden_layers)]
     act = ['tanh' for _ in range(num_hidden_layers)]
 #    act = ['tanh','exponential', 'softplus', 'elu', 'tanh']
     dropout = [0.1, 0.1, 0.1, 0.1, 0.1]
     gauss_std = [0.1, 0.1, 0.1, 0.1, 0.1]
 
-    modeldir = 'chained_models'
-    plotsdir = 'plots'
+    if spl in [1, 2]: 
+        modeldir = f'models/split{spl}'
+        plotsdir = f'plots/split{spl}'
+    else:
+        modeldir = 'chained_models'
+        plotsdir = 'plots'
+
+#    modeldir = 'chained_models'
+#    plotsdir = 'plots'
 
 
     for target in variables: 
@@ -108,5 +121,7 @@ if __name__ == "__main__":
     requiredArgs.add_argument('-e','--EBEE', action='store', type=str, required=True)
     requiredArgs.add_argument('-n','--nEvt', action='store', type=int, required=True)
     requiredArgs.add_argument('-v','--var_type', action='store', type=str, required=True)
+    optArgs = parser.add_argument_group('Optional Arguments')
+    optArgs.add_argument('-s','--split', action='store', type=int)
     options = parser.parse_args()
     main(options)

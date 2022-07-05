@@ -43,8 +43,13 @@ def main(options):
     data_key = 'mc'
     EBEE = options.EBEE 
      
-#    inputtrain = 'weighted_dfs/df_{}_{}_Iso_train.h5'.format(data_key, EBEE)
-    inputtrain = 'tmp_dfs/weighted0.9/df_{}_{}_Iso_train.h5'.format(data_key, EBEE)
+    spl = options.split
+    if spl in [1, 2]: 
+        inputtrain = 'tmp_dfs/weightedsys/df_{}_{}_Iso_train_split{}.h5'.format(data_key, EBEE, spl)
+    else: 
+        inputtrain = 'weighted_dfs/df_{}_{}_Iso_train.h5'.format(data_key, EBEE)
+        print(f"Wrong argument '-s' ('--split'), argument must have value 1 or 2. Now using defalt dataframe {inputtrain}")
+#    inputtrain = 'tmp_dfs/weighted0.9/df_{}_{}_Iso_train.h5'.format(data_key, EBEE)
    
     #load dataframe
 #    nEvt = 3500000
@@ -52,8 +57,12 @@ def main(options):
     df_train = (pd.read_hdf(inputtrain).loc[:,kinrho+variables+weight]).sample(nEvt, random_state=100).reset_index(drop=True)
 #    df_train = ((pd.read_hdf('from_massi/weighted_dfs/df_mc_EB_Iso_test.h5').loc[:,kinrho+variables])[:nEvt]).reset_index(drop=True)
      
-    modeldir = 'chained_models'
-    plotsdir = 'plots'
+    if spl in [1, 2]: 
+        modeldir = f'models/split{spl}'
+        plotsdir = f'plots/split{spl}'
+    else:
+        modeldir = 'chained_models'
+        plotsdir = 'plots'
 
 
     # train classifier for peak or tail
@@ -188,31 +197,6 @@ def main(options):
         model_file_mc = '{}/{}_{}_{}'.format(modeldir, 'mc', EBEE, target)
         model_file_data = '{}/{}_{}_{}'.format(modeldir, 'data', EBEE, target)
    
-        # shift before train qrnn
-        if not all([(f'{var}_shift' in df_train.columns) for var in variables]):
-            if len(variables)>1: 
-                print(f'shifting mc with classifier and tail regressors: {clf_name_mc}, {clf_name_data}, {tReg_models}')
-                # VERY IMPORTANT! Note the order of targets here
-                Y_shifted = parallelize(apply2DShift, 
-                    df_train.loc[:,kinrho], df_train.loc[:,['probeChIso03','probeChIso03worst']],
-                    load_clf(clf_name_mc), load_clf(clf_name_data), 
-                    tReg_models['probeChIso03'], tReg_models['probeChIso03worst'],
-#                    qs,qweights,
-                    final_reg = False,
-                    ) 
-                df_train['probeChIso03_shift'] = Y_shifted[:,0]
-                df_train['probeChIso03worst_shift'] = Y_shifted[:,1]
-            else: 
-                print(f'shifting mc with classifiers and tail regressor: {clf_name_mc}, {clf_name_data}, {model_file_mc}')
-                Y_shifted = parallelize(applyShift, 
-                    df_train.loc[:,kinrho], df_train.loc[:,variables[0]],
-                    load_clf(clf_name_mc), load_clf(clf_name_data), 
-                    model_file_mc,
-#                    qs,qweights,
-                    final_reg = False,
-                    ) 
-                df_train['{}_shift'.format(variables[0])] = Y_shifted
-
   
         # qrnn for tail distribution
         if False: #target == 'probeChIso03worst': 
@@ -257,6 +241,31 @@ def main(options):
             plt.legend()
             history_fig.savefig('{}/training_histories/{}_{}_{}.png'.format(plotsdir, data_key, EBEE, target))
 
+
+        if not all([(f'{var}_shift' in df_train.columns) for var in variables]):
+            if len(variables)>1: 
+                print(f'shifting mc with classifier and tail regressors: {clf_name_mc}, {clf_name_data}, {tReg_models}')
+                # VERY IMPORTANT! Note the order of targets here
+                Y_shifted = parallelize(apply2DShift, 
+                    df_train.loc[:,kinrho], df_train.loc[:,['probeChIso03','probeChIso03worst']],
+                    load_clf(clf_name_mc), load_clf(clf_name_data), 
+                    tReg_models['probeChIso03'], tReg_models['probeChIso03worst'],
+#                    qs,qweights,
+                    final_reg = False,
+                    ) 
+                df_train['probeChIso03_shift'] = Y_shifted[:,0]
+                df_train['probeChIso03worst_shift'] = Y_shifted[:,1]
+            else: 
+                print(f'shifting mc with classifiers and tail regressor: {clf_name_mc}, {clf_name_data}, {model_file_mc}')
+                Y_shifted = parallelize(applyShift, 
+                    df_train.loc[:,kinrho], df_train.loc[:,variables[0]],
+                    load_clf(clf_name_mc), load_clf(clf_name_data), 
+                    model_file_mc,
+#                    qs,qweights,
+                    final_reg = False,
+                    ) 
+                df_train['{}_shift'.format(variables[0])] = Y_shifted
+
         print(f'correcting mc with models: {model_file_data}, {model_file_mc}')
         df_train['{}_corr'.format(target)] = parallelize(applyCorrection, 
             df_train.loc[:,features], df_train.loc[:,'{}_shift'.format(target)], 
@@ -283,5 +292,6 @@ if __name__ == "__main__":
     requiredArgs.add_argument('-v','--var_type', action='store', type=str, required=True)
     optArgs = parser.add_argument_group('Optional Arguments')
     optArgs.add_argument('-r','--retrain', action='store', type=str)
+    optArgs.add_argument('-s','--split', action='store', type=int)
     options = parser.parse_args()
     main(options)

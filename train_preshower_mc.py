@@ -33,11 +33,18 @@ def main(options):
     data_key = 'mc'
     EBEE = 'EE' 
      
-    inputtrain = 'dfs_corr/df_{}_{}_train_corr.h5'.format(data_key, EBEE)
-    inputtest = 'weighted_dfs/df_{}_{}_test.h5'.format(data_key, EBEE)
+    spl = options.split
+    if spl in [1, 2]: 
+        inputtrain = 'dfs_corr/df_{}_{}_train_split{}_corr.h5'.format(data_key, EBEE, spl)
+        nEvt = 820000
+    else: 
+        inputtrain = 'dfs_corr/df_{}_{}_train_corr.h5'.format(data_key, EBEE)
+        nEvt = 850000
+        print(f"Wrong argument '-s' ('--split'), argument must have value 1 or 2. Now using defalt dataframe {inputtrain}")
+#    inputtest = 'weighted_dfs/df_{}_{}_test.h5'.format(data_key, EBEE)
    
     #load dataframe
-    nEvt = 850000
+#    nEvt = 850000
     query_preshower = 'probeScEta<-1.653 or probeScEta>1.653'
     df_train = ((pd.read_hdf(inputtrain).loc[:,kinrho+vars_corr+preshower+weight]).query(query_preshower)).sample(nEvt, random_state=100).reset_index(drop=True)
     
@@ -58,8 +65,12 @@ def main(options):
     
     train_start = time.time()
 
-    modeldir = 'chained_models'
-    plotsdir = 'plots'
+    if spl in [1, 2]: 
+        modeldir = f'models/split{spl}'
+        plotsdir = f'plots/split{spl}'
+    else:
+        modeldir = 'chained_models'
+        plotsdir = 'plots'
 
     sample_weight = df_train.loc[:,'ml_weight']
 
@@ -124,5 +135,6 @@ if __name__ == "__main__":
 #    requiredArgs.add_argument('-e','--EBEE', action='store', type=str, required=True)
     optArgs = parser.add_argument_group('Optional Arguments')
     optArgs.add_argument('-r','--retrain', action='store', type=str)
+    optArgs.add_argument('-s','--split', action='store', type=int)
     options = parser.parse_args()
     main(options)

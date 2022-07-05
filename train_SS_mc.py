@@ -34,8 +34,14 @@ def main(options):
     data_key = 'mc'
     EBEE = options.EBEE 
      
-    inputtrain = 'weighted_dfs/df_{}_{}_train.h5'.format(data_key, EBEE)
-    inputtest = 'weighted_dfs/df_{}_{}_test.h5'.format(data_key, EBEE)
+    spl = options.split
+    if spl in [1, 2]: 
+        inputtrain = 'tmp_dfs/weightedsys/df_{}_{}_train_split{}.h5'.format(data_key, EBEE, spl)
+    else: 
+        inputtrain = 'weighted_dfs/df_{}_{}_train.h5'.format(data_key, EBEE)
+        print(f"Wrong argument '-s' ('--split'), argument must have value 1 or 2. Now using defalt dataframe {inputtrain}")
+#    inputtrain = 'weighted_dfs/df_{}_{}_train.h5'.format(data_key, EBEE)
+#    inputtest = 'weighted_dfs/df_{}_{}_test.h5'.format(data_key, EBEE)
    
     #load dataframe
     nEvt = options.nEvt
@@ -62,8 +68,12 @@ def main(options):
     
     train_start = time.time()
 
-    modeldir = 'chained_models'
-    plotsdir = 'plots'
+    if spl in [1, 2]: 
+        modeldir = f'models/split{spl}'
+        plotsdir = f'plots/split{spl}'
+    else:
+        modeldir = 'chained_models'
+        plotsdir = 'plots'
 
     sample_weight = df_train.loc[:,'ml_weight']
 
@@ -130,5 +140,6 @@ if __name__ == "__main__":
     requiredArgs.add_argument('-n','--nEvt', action='store', type=int, required=True)
     optArgs = parser.add_argument_group('Optional Arguments')
     optArgs.add_argument('-r','--retrain', action='store', type=str)
+    optArgs.add_argument('-s','--split', action='store', type=int)
     options = parser.parse_args()
     main(options)

@@ -51,7 +51,7 @@ def sec2HMS(sec):
 
 def mathSciNot(x, lim=(-2,3), dig=2):
     exp = int(np.log10(x))
-    if exp >= lim[0] and exp <= lim[1]: 
+    if exp > lim[0] and exp <= lim[1]: 
         outstr = '{:.' + str(dig) + 'f}'
         return _shorterStr(outstr.format(x), '{:g}'.format(x))
     else:
@@ -60,8 +60,21 @@ def mathSciNot(x, lim=(-2,3), dig=2):
             quo /= 10.
             exp += 1
         outstr = '{:.' + str(dig) + 'f}'
-        return _shorterStr(outstr.format(quo), '{:g}'.format(quo)) + r' $\times 10^{'+str(exp)+'}$'
+        return _shorterStr(outstr.format(quo), '{:g}'.format(quo)) + r' $\times$ 10$^{'+str(exp)+'}$'
 
 def _shorterStr(s1,s2):
     return s1 if len(s1) < len(s2) else s2
+
+def weighted_quantiles(a, q, weights=None, **kwargs): 
+    if weights is None: 
+        return np.quantile(a, q, **kwargs)
+
+    a = np.asarray(a)
+    weights = np.asarray(weights)
+    idx = np.argsort(a)
+    a = a[idx]
+    weights = weights[idx]
+    quantiles = np.cumsum(weights) / np.sum(weights)
+    return np.interp(q, quantiles, a)
+
 

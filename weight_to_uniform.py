@@ -56,32 +56,37 @@ def main(options):
     EBEE = options.EBEE 
 #    df_type = 'train'
     
-    dfDir = 'tmp_dfs/split0.9'
-    outDir = 'tmp_dfs/weighted0.9'
+#    dfDir = 'tmp_dfs/split0.9'
+#    outDir = 'tmp_dfs/weighted0.9'
+    dfDir = 'tmp_dfs/sys'
+    outDir = 'tmp_dfs/weightedsys'
     if not os.path.exists(outDir): 
         os.makedirs(outDir)
 
-    for df_type in ('train', 'test'):
-        inputfile = 'df_{}_{}_Iso_{}.h5'.format(data_key, EBEE, df_type) # for isolation 
-#        inputfile = 'df_{}_{}_{}.h5'.format(data_key, EBEE, df_type)
-        print(f'>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>weighting file: {dfDir}/{inputfile}')
-#        df = pd.read_hdf('dataframes/{}'.format(inputfile))
-        try: 
-            df = pd.read_hdf(f'{dfDir}/{inputfile}')
-        except FileNotFoundError as fe: 
-            print(f'{fe}\ncontinue')
-            continue
+#    for df_type in ('train', 'test'):
+    for df_type in ('train_split1', 'train_split2', 'test'):
+        for inputfile in (f'df_{data_key}_{EBEE}_Iso_{df_type}.h5', f'df_{data_key}_{EBEE}_{df_type}.h5'): 
+#            inputfile = 'df_{}_{}_Iso_{}.h5'.format(data_key, EBEE, df_type) # for isolation 
+#            inputfile = 'df_{}_{}_{}.h5'.format(data_key, EBEE, df_type)
+            print(f'>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>weighting file: {dfDir}/{inputfile}')
+#            df = pd.read_hdf('dataframes/{}'.format(inputfile))
+            try: 
+                df = pd.read_hdf(f'{dfDir}/{inputfile}')
+            except FileNotFoundError as fe: 
+                print(f'{fe}\ncontinue')
+                continue
 
-        print('orignal dataframe: \n', df)
+            print('orignal dataframe: \n', df)
 
-        hist, xedges, yedges = np.histogram2d(df[xname], df[yname], bins=bins)
-        weights = compute_weights(hist)
+            hist, xedges, yedges = np.histogram2d(df[xname], df[yname], bins=bins)
+            weights = compute_weights(hist)
 
-        df_weighted = assign_weights(df, weights, xname, xedges, yname, yedges)
+            df_weighted = assign_weights(df, weights, xname, xedges, yname, yedges)
+            df_weighted.sort_index(inplace=True)
 
-        print('weighted dataframe: \n', df_weighted)
-        df_weighted.to_hdf(f'{outDir}/{inputfile}','df',mode='w',format='t')
-        print(f'dataframe {outDir}/{inputfile} has been created')
+            print('weighted dataframe: \n', df_weighted)
+            df_weighted.to_hdf(f'{outDir}/{inputfile}','df',mode='w',format='t')
+            print(f'dataframe {outDir}/{inputfile} has been created')
 
 #    for iso in (True, False):
 #        if iso: 

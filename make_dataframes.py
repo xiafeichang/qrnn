@@ -4,7 +4,7 @@ import uproot
 import pandas as pd
 
 
-def make_dataframe(path, tree, data_key, EBEE, dfDir, dfname, cut=None, split=None):
+def make_dataframe(path, tree, data_key, EBEE, dfDir, dfname, cut=None, split=None, sys=False):
 
     Branches = ['probeScEta', 'weight', 'probeSigmaRR', 'tagChIso03', 'tagR9', 'tagPhiWidth_Sc', 'probePt', 'tagSigmaRR', 'puweight', 'tagEleMatch', 'tagPhi', 'probeScEnergy', 'nvtx',  
                 'tagPhoIso', 'run', 'tagScEta', 'probeEleMatch', 'tagPt', 'rho', 'tagS4', 'tagSigmaIeIe', 'tagCovarianceIpIp', 'tagCovarianceIeIp', 'tagScEnergy', 'tagChIso03worst', 
@@ -55,15 +55,24 @@ def make_dataframe(path, tree, data_key, EBEE, dfDir, dfname, cut=None, split=No
     
     df = df.sample(frac=1.).reset_index(drop=True)
     
-    if split is not None: 
-        df_train = df[0:int(split*df.index.size)]
-        df_test = df[int(split*df.index.size):]
-        df_train.to_hdf('{}/{}_train.h5'.format(dfDir,dfname),'df',mode='w',format='t')
+    if sys: 
+        df_train1 = df[0:int(0.45*df.index.size)]
+        df_train2 = df[int(0.45*df.index.size):int(0.9*df.index.size)]
+        df_test = df[int(0.9*df.index.size):]
+        df_train1.to_hdf('{}/{}_train_split1.h5'.format(dfDir,dfname),'df',mode='w',format='t')
+        df_train2.to_hdf('{}/{}_train_split2.h5'.format(dfDir,dfname),'df',mode='w',format='t')
         df_test.to_hdf('{}/{}_test.h5'.format(dfDir,dfname),'df',mode='w',format='t')
         print('{}/{}_(train/test).h5 have been created'.format(dfDir,dfname))
-    else: 
-        df.to_hdf('{}/{}.h5'.format(dfDir,dfname),'df',mode='w',format='t')
-        print('{}/{}.h5 have been created'.format(dfDir,dfname))
+    else:
+        if split is not None: 
+            df_train = df[0:int(split*df.index.size)]
+            df_test = df[int(split*df.index.size):]
+            df_train.to_hdf('{}/{}_train.h5'.format(dfDir,dfname),'df',mode='w',format='t')
+            df_test.to_hdf('{}/{}_test.h5'.format(dfDir,dfname),'df',mode='w',format='t')
+            print('{}/{}_(train/test).h5 have been created'.format(dfDir,dfname))
+        else: 
+            df.to_hdf('{}/{}.h5'.format(dfDir,dfname),'df',mode='w',format='t')
+            print('{}/{}.h5 have been created'.format(dfDir,dfname))
 
 
 def main(options):
@@ -84,7 +93,8 @@ def main(options):
     EBEE = options.EBEE 
     year = 2018
     split = 0.9
-    dfDir = f'./tmp_dfs/split{split}'
+#    dfDir = f'./tmp_dfs/split{split}'
+    dfDir = f'./tmp_dfs/sys'
 
     if not os.path.exists(dfDir): 
         os.makedirs(dfDir)
@@ -92,10 +102,11 @@ def main(options):
 #    make_dataframe(path[data_key], tree[data_key], data_key, EBEE, dfDir, 'df_{}_all'.format(data_key, EBEE))
 
 #    make_dataframe(path[data_key], tree[data_key], data_key, EBEE, dfDir, 'df_{}_{}'.format(data_key, EBEE), cut, split)
-    make_dataframe(path[data_key], tree[data_key], data_key, EBEE, dfDir, 'df_{}_{}_Iso'.format(data_key, EBEE), cutIso[EBEE], split)
+#    make_dataframe(path[data_key], tree[data_key], data_key, EBEE, dfDir, 'df_{}_{}_Iso'.format(data_key, EBEE), cutIso[EBEE], split)
 
-#    make_dataframe(path[data_key], tree[data_key], data_key, EBEE, dfDir, 'df_{}_{}'.format(data_key, EBEE), cut)
-#    make_dataframe(path[data_key], tree[data_key], data_key, EBEE, dfDir, 'df_{}_{}_Iso'.format(data_key, EBEE), cutIso[EBEE])
+
+    make_dataframe(path[data_key], tree[data_key], data_key, EBEE, dfDir, 'df_{}_{}'.format(data_key, EBEE), cut, sys=True)
+    make_dataframe(path[data_key], tree[data_key], data_key, EBEE, dfDir, 'df_{}_{}_Iso'.format(data_key, EBEE), cutIso[EBEE], sys=True)
 
 #    make_dataframe(path[data_key], tree[data_key], data_key, EBEE, dfDir, 'df_{}_{}_all'.format(data_key, EBEE), cutplots)
 
