@@ -29,9 +29,9 @@
 
 #python test_pred.py -e $1 -n $2 -v Ch
 
-#python check_final.py -e $1 -n $2
+python check_final.py -e $1 -n $2
 
-python syst.py -e $1
+#python syst.py -e $1
 
 #python corr_diff.py -e $1
 

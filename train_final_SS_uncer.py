@@ -46,8 +46,10 @@ def main(options):
     batch_size = pow(2, 13)
 #    num_hidden_layers = 5
 #    num_units = [160, 120, 100, 80, 50]
-    num_hidden_layers = 5
-    num_units = [120, 100, 80, 60, 50]
+#    num_hidden_layers = 5
+#    num_units = [120, 100, 80, 60, 50]
+    num_hidden_layers = 10
+    num_units = [30-1*i for i in range(num_hidden_layers)]
     act = ['tanh' for _ in range(num_hidden_layers)]
 #    act = ['tanh','exponential', 'softplus', 'elu', 'tanh']
     dropout = [0.1, 0.1, 0.1, 0.1, 0.1]
@@ -76,7 +78,7 @@ def main(options):
         lr = 0.5, 
         batch_size = batch_size, 
         use_proba_output = False, 
-        num_normal_layers = 3,
+        num_normal_layers = 9,
         epochs = 1000, 
         checkpoint_dir = f'./ckpt/final_uncer/{EBEE}', 
         save_file = model_file, 

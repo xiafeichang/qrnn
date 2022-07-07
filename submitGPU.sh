@@ -46,23 +46,24 @@ nEvt=$2
 #    python train_final_Iso.py -e ${EBEE[i]} -n ${nEvt[i]} -v Ch 
 #done
 
-python train_final_preshower.py
+#python train_final_preshower.py
 
-for EBEE in "EE"; # "EE" "EB" ; 
-do 
-    for data_type in "test" "train"; 
-    do
-        echo correcting mc for ${EBEE} ${data_type}
-        #python correct_mc.py -e ${EBEE} -t ${data_type} 
-        python correct_final.py -e ${EBEE} -t ${data_type} 
-        #python correct_final_Iso.py -e ${EBEE} -t ${data_type} 
-        #python correct_final_uncer.py -e ${EBEE} -t ${data_type} 
-    done
-done
+#for EBEE in "EE"; # "EE" "EB" ; 
+#do 
+#    for data_type in "test" "train"; 
+#    do
+#        echo correcting mc for ${EBEE} ${data_type}
+#        #python correct_mc.py -e ${EBEE} -t ${data_type} 
+#        python correct_final.py -e ${EBEE} -t ${data_type} 
+#        #python correct_final_Iso.py -e ${EBEE} -t ${data_type} 
+#        #python correct_final_uncer.py -e ${EBEE} -t ${data_type} 
+#    done
+#done
 
 #python correct_mc.py -e ${EBEE} -t $2 
 
 #python train_final_SS_uncer.py -e ${EBEE} -n ${nEvt} 
+python correct_final_uncer.py -e ${EBEE} -t $2
 
 #python test_pred.py -e ${EBEE} -n ${nEvt} -v Ch
 
