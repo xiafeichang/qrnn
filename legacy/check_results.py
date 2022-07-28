@@ -94,7 +94,7 @@ def draw_mean_plot(EBEE, df_data, df_mc, x_vars, x_title, x_var_name, target, pl
     if final:
         plt.plot(x_vars_c, var_corr_final_mean, color='cyan', label='MC corrected final')
 
-    plt.title(r'\textbf{CMS}', loc='left', fontsize='x-large')
+#    plt.title(r'\textbf{CMS}', loc='left', fontsize='x-large')
     plt.title(r'63.67 fb$^{-1}$ (13 TeV)', loc='right', fontsize='x-large')
     plt.xlabel(x_title, fontsize='x-large')
     plt.ylabel('mean of '+ varNameMap[target], fontsize='x-large')
@@ -190,7 +190,7 @@ def draw_dist_plot(EBEE, df_data, df_mc, qs, x_vars, x_title, x_var_name, target
             plt.plot(x_vars_c, var_corr_final[nq//2],   color='cyan', label='MC corrected final')
         plt.legend(fontsize='large')
 
-    plt.title(r'\textbf{CMS}', loc='left', fontsize='x-large')
+#    plt.title(r'\textbf{CMS}', loc='left', fontsize='x-large')
     plt.title(r'63.67 fb$^{-1}$ (13 TeV)', loc='right', fontsize='x-large')
     plt.xlabel(x_title, fontsize='x-large')
     plt.ylabel(varNameMap[target], fontsize='x-large')
@@ -203,7 +203,7 @@ def draw_dist_plot(EBEE, df_data, df_mc, qs, x_vars, x_title, x_var_name, target
     fig.savefig('{}/{}_{}_{}_dist.pdf'.format(plotsdir, EBEE, target, x_var_name))
     plt.close(fig)
 
-def draw_hist(df_data, df_mc, target, fig_name, bins=None, histrange=None, density=False, mc_weights=None, logplot=False, final=False, sysuncer=False):
+def draw_hist(df_data, df_mc, target, fig_name, bins=None, histrange=None, density=False, mc_weights=None, logplot=False, showshift=False, final=False, sysuncer=False):
 
     if 'EB' in fig_name: 
         EBEE = 'EB'
@@ -235,12 +235,16 @@ def draw_hist(df_data, df_mc, target, fig_name, bins=None, histrange=None, densi
         x = np.append(x, (bin_edges[i+1]+bin_edges[i])/2.)
         xerr = np.append(xerr, (bin_edges[i+1]-bin_edges[i])/2.)
 
-    mc_uncorr_n, _, _ = ax1.hist(df_mc[target], range=histrange, bins=bins, density=density, weights=mc_weights, histtype='step', color='red', label='MC uncorrected')
-    mc_corr_n, _, _ = ax1.hist(df_mc['{}_corr'.format(target)], range=histrange, bins=bins, density=density, weights=mc_weights, histtype='step', color='blue', label='MC corrected')
+#    mc_uncorr_n, _, _ = ax1.hist(df_mc[target], range=histrange, bins=bins, density=density, weights=mc_weights, histtype='step', color='red', label='MC uncorrected')
+
+#    if showshift:
+#        mc_shift_n, _, _ = ax1.hist(df_mc['{}_shift'.format(target)], range=histrange, bins=bins, density=density, weights=mc_weights, histtype='step', color='green', label='MC shifted')
+
+#    mc_corr_n, _, _ = ax1.hist(df_mc['{}_corr'.format(target)], range=histrange, bins=bins, density=density, weights=mc_weights, histtype='step', color='blue', label='MC corrected')
 
     if final: 
-        mc_final_n, _, _ = ax1.hist(df_mc['{}_corr_final'.format(target)], range=histrange, bins=bins, density=density, weights=mc_weights, histtype='step', color='cyan', label='MC corrected final')
-#        mc_final_n, _, _ = ax1.hist(df_mc['{}_corr_final'.format(target)], range=histrange, bins=bins, density=density, weights=mc_weights, histtype='step', color='blue', label='MC corrected final')
+#        mc_final_n, _, _ = ax1.hist(df_mc['{}_corr_final'.format(target)], range=histrange, bins=bins, density=density, weights=mc_weights, histtype='step', color='cyan', label='MC corrected final')
+        mc_final_n, _, _ = ax1.hist(df_mc['{}_corr_final'.format(target)], range=histrange, bins=bins, density=density, weights=mc_weights, histtype='step', color='blue', label='MC corrected final')
 
     if sysuncer: 
 #        mc_corr_n, mc_corr_nsyserr = hists_for_uncer(df_mc, [f'{target}_corr_{i}' for i in range(50)], bins=bins, range=histrange, weights=mc_weights, density=density)
@@ -258,7 +262,7 @@ def draw_hist(df_data, df_mc, target, fig_name, bins=None, histrange=None, densi
     ax1.tick_params(labelsize='large')
     lg = ax1.legend(title=r'$Z \to e^{+}e^{-}$'+'\n'+'Tag and Probe'+'\n'+etastr, frameon=False)
     plt.setp(lg.get_title(), multialignment='center')
-    ax1.set_title(r'\textbf{CMS}', loc='left', fontsize='x-large')
+#    ax1.set_title(r'\textbf{CMS}', loc='left', fontsize='x-large')
     ax1.set_title(r'63.67 fb$^{-1}$ (13 TeV)', loc='right', fontsize='x-large') # fontsize=16, fontname="Times New Roman"
 
     binwidth = mathSciNot((histrange[1]-histrange[0])/bins)
@@ -270,23 +274,30 @@ def draw_hist(df_data, df_mc, target, fig_name, bins=None, histrange=None, densi
         ax1.get_yaxis().get_offset_text().set_ha('right')
         ax1.get_yaxis().get_offset_text().set_position((0., 1.))
 
-    mc_uncorr_n = np.where(mc_uncorr_n==0, 1.e-5, mc_uncorr_n)
-    mc_corr_n = np.where(mc_corr_n==0, 1.e-5, mc_corr_n)
-    ratio_uncorr = data_n / mc_uncorr_n
-    ratio_uncorr_err = np.sqrt(data_n + (data_n**2/mc_uncorr_n)) / mc_uncorr_n
-    ratio_corr = data_n / mc_corr_n
-    ratio_corr_err = np.sqrt(data_n + (data_n**2/mc_corr_n)) / mc_corr_n
+#    mc_uncorr_n = np.where(mc_uncorr_n==0, 1.e-5, mc_uncorr_n)
+#    mc_corr_n = np.where(mc_corr_n==0, 1.e-5, mc_corr_n)
+#    ratio_uncorr = data_n / mc_uncorr_n
+#    ratio_uncorr_err = np.sqrt(data_n + (data_n**2/mc_uncorr_n)) / mc_uncorr_n
+#    ratio_corr = data_n / mc_corr_n
+#    ratio_corr_err = np.sqrt(data_n + (data_n**2/mc_corr_n)) / mc_corr_n
 
     ax2.plot(x, np.ones_like(x), 'k-.')
-    ax2.errorbar(x, ratio_uncorr, ratio_uncorr_err, xerr, fmt='.', elinewidth=1., capsize=1., color='red')
-    ax2.errorbar(x, ratio_corr, ratio_corr_err, xerr, fmt='.', elinewidth=1., capsize=1., color='blue')
+#    ax2.errorbar(x, ratio_uncorr, ratio_uncorr_err, xerr, fmt='.', elinewidth=1., capsize=1., color='red')
+
+#    if showshift:
+#        mc_shift_n = np.where(mc_shift_n==0, 1.e-5, mc_shift_n)
+#        ratio_shift = data_n / mc_shift_n
+#        ratio_shift_err = np.sqrt(data_n + (data_n**2/mc_shift_n)) / mc_shift_n
+#        ax2.errorbar(x, ratio_shift, ratio_shift_err, xerr, fmt='.', elinewidth=1., capsize=1., color='green')
+
+#    ax2.errorbar(x, ratio_corr, ratio_corr_err, xerr, fmt='.', elinewidth=1., capsize=1., color='blue')
 
     if final:
         mc_final_n = np.where(mc_final_n==0, 1.e-5, mc_final_n)
         ratio_final = data_n / mc_final_n
         ratio_final_err = np.sqrt(data_n + (data_n**2/mc_final_n)) / mc_final_n
-        ax2.errorbar(x, ratio_final, ratio_final_err, xerr, fmt='.', elinewidth=1., capsize=1., color='cyan')
-#        ax2.errorbar(x, ratio_final, ratio_final_err, xerr, fmt='.', elinewidth=1., capsize=1., color='blue')
+#        ax2.errorbar(x, ratio_final, ratio_final_err, xerr, fmt='.', elinewidth=1., capsize=1., color='cyan')
+        ax2.errorbar(x, ratio_final, ratio_final_err, xerr, fmt='.', elinewidth=1., capsize=1., color='blue')
 
     if sysuncer: 
         mc_corr_nerrup = np.where(mc_corr_nerrup==0, 1.e-5, mc_corr_nerrup)
@@ -295,15 +306,15 @@ def draw_hist(df_data, df_mc, target, fig_name, bins=None, histrange=None, densi
         ratio_corr_syserrl = data_nsys / mc_corr_nerrup
         ratio_corr_syserrh = data_nsys / mc_corr_nerrdn
 
-        ax2.fill_between(bin_edges, ratio_corr_syserrl, ratio_corr_syserrh, step='post', color='blue', alpha=0.3, edgecolor=None)
+        ax2.fill_between(bin_edges, ratio_corr_syserrl, ratio_corr_syserrh, step='post', color='blue', alpha=0.2, edgecolor=None)
     
     ax2.grid(True)
     ax2.set_xlim(histrange)
-    ax2.set_ylim(0.8, 1.2)
-#    ax2.set_ylim(0.5, 1.5)
+#    ax2.set_ylim(0.8, 1.2)
+    ax2.set_ylim(0.5, 1.5)
     ax2.set_xticks(xticks)
-    ax2.set_yticks(np.linspace(0.8, 1.2, 5))
-#    ax2.set_yticks(np.linspace(0.5, 1.5, 5))
+#    ax2.set_yticks(np.linspace(0.8, 1.2, 5))
+    ax2.set_yticks(np.linspace(0.5, 1.5, 5))
     ax2.ticklabel_format(style='sci', scilimits=(-2, 3), axis='both', useMathText=True)
     ax2.get_yaxis().get_offset_text().set_ha('right')
     ax2.get_yaxis().get_offset_text().set_position((0., 1.))
@@ -359,8 +370,9 @@ def main(options):
 
     df_data = (pd.read_hdf('tmp_dfs/all/df_data_{}_all.h5'.format(EBEE))).sample(nEvt, random_state=100).reset_index(drop=True)
 #    df_mc = (pd.read_hdf('dfs_corr/df_mc_{}_all_corr.h5'.format(EBEE))).sample(nEvt, random_state=100).reset_index(drop=True)
-    df_mc = (pd.read_hdf('dfs_corr/df_mc_{}_all_corr_final.h5'.format(EBEE))).sample(nEvt, random_state=100).reset_index(drop=True)
+#    df_mc = (pd.read_hdf('dfs_corr/df_mc_{}_all_corr_final.h5'.format(EBEE))).sample(nEvt, random_state=100).reset_index(drop=True)
 #    df_mc = (pd.read_hdf('dfs_sys/df_mc_{}_all_corr_final.h5'.format(EBEE))).sample(nEvt, random_state=100).reset_index(drop=True)
+    df_mc = (pd.read_hdf('dfs_sys/backup/df_mc_{}_all_corr_final.h5'.format(EBEE))).sample(nEvt, random_state=100).reset_index(drop=True)
 #    df_mc = (pd.read_hdf('dfs_sys/split1/df_mc_{}_all_corr_final.h5'.format(EBEE))).sample(nEvt, random_state=100).reset_index(drop=True)
 #    df_mc = (pd.read_hdf('dfs_sys/split2/df_mc_{}_all_corr_final.h5'.format(EBEE))).sample(nEvt, random_state=100).reset_index(drop=True)
 
@@ -368,8 +380,8 @@ def main(options):
 #    plotsdir = f'test/plots/split1/{EBEE}'
 #    plotsdir = f'test/plots/split2/{EBEE}'
 #    plotsdir = f'plots/check_correction/{EBEE}'
-#    plotsdir = f'plots/check_correction_final/{EBEE}'
-    plotsdir = f'plots/syst_uncer/{EBEE}'
+    plotsdir = f'plots/check_correction_final/{EBEE}'
+#    plotsdir = f'plots/syst_uncer/{EBEE}'
 
     if EBEE == 'EB': 
         vars_qrnn = variables.copy() 
@@ -463,59 +475,59 @@ def main(options):
     phis = np.arange(-3.15, 3.15, 0.3)
 
     xs      = [pTs,       etas,         rhos,      phis      ]
-    xtitles = ['$p_T$',   '$\eta$',     '$\\rho$', '$\phi$'  ]
+    xtitles = ['$p_T$ $(\mathrm{GeV})$',   '$\eta$',     '$\\rho$ $(\mathrm{GeV})$', '$\phi$'  ]
     xnames  = ['probePt', 'probeScEta', 'rho',     'probePhi']
     qs = np.array([0.025, 0.16, 0.5, 0.84, 0.975])
 
-#    for target in isoVars: #variables+preshower+isoVars 
-#
-#        if EBEE == 'EB' and target in preshower: 
-#            continue
-#
-#        fig_name = '{}/data_mc_dist_{}_{}'.format(plotsdir, EBEE, target)
-##        fig_name = '{}/data_mc_dist_{}_{}_uncer'.format(plotsdir, EBEE, target)
-#    
-#        if target in preshower: 
-#            query_preshower = 'probeScEta<-1.653 or probeScEta>1.653'
+    for target in variables+preshower+isoVars: #variables+preshower+isoVars 
+
+        if EBEE == 'EB' and target in preshower: 
+            continue
+
+        fig_name = '{}/data_mc_dist_{}_{}'.format(plotsdir, EBEE, target)
+#        fig_name = '{}/data_mc_dist_{}_{}_uncer'.format(plotsdir, EBEE, target)
+    
+        if target in preshower: 
+            query_preshower = 'probeScEta<-1.653 or probeScEta>1.653'
 #            draw_hist(df_data.query(query_preshower), df_mc.query(query_preshower), target, fig_name, bins, histranges[target], mc_weights=(df_mc.query(query_preshower))['weight_clf'], logplot=logplots[target], final=False)
-#             
-#            for x, xtitle, xname in zip(xs, xtitles, xnames): 
-#                draw_mean_plot(EBEE, df_data.query(query_preshower), df_mc.query(query_preshower), x, xtitle, xname, target, plotsdir, final=False)
-#                draw_dist_plot(EBEE, df_data.query(query_preshower), df_mc.query(query_preshower), qs, x, xtitle, xname, target, plotsdir, final=False)
-#        elif target in isoVars: 
-#            draw_hist(df_data, df_mc, target, fig_name, bins, histranges[target], mc_weights=df_mc['weight_clf'], logplot=logplots[target], final=True)
-#             
-#            if EBEE == 'EB':
-#                query_iso = f'probeSigmaIeIe<0.0105'
-#            else: 
-#                query_iso = f'probeSigmaIeIe<0.028'
-#            for x, xtitle, xname in zip(xs, xtitles, xnames): 
-#                draw_mean_plot(EBEE, df_data.query(query_iso), df_mc.query(query_iso), x, xtitle, xname, target, plotsdir, final=True)
-#                draw_dist_plot(EBEE, df_data.query(query_iso), df_mc.query(query_iso), qs, x, xtitle, xname, target, plotsdir, final=True)
-#        else: 
+             
+            for x, xtitle, xname in zip(xs, xtitles, xnames): 
+                draw_mean_plot(EBEE, df_data.query(query_preshower), df_mc.query(query_preshower), x, xtitle, xname, target, plotsdir, final=True)
+                draw_dist_plot(EBEE, df_data.query(query_preshower), df_mc.query(query_preshower), qs, x, xtitle, xname, target, plotsdir, final=True)
+        elif target in isoVars: 
+#            draw_hist(df_data, df_mc, target, fig_name, bins, histranges[target], mc_weights=df_mc['weight_clf'], logplot=logplots[target], showshift=False, final=False)
+             
+            if EBEE == 'EB':
+                query_iso = f'probeSigmaIeIe<0.0105'
+            else: 
+                query_iso = f'probeSigmaIeIe<0.028'
+            for x, xtitle, xname in zip(xs, xtitles, xnames): 
+                draw_mean_plot(EBEE, df_data.query(query_iso), df_mc.query(query_iso), x, xtitle, xname, target, plotsdir, final=True)
+                draw_dist_plot(EBEE, df_data.query(query_iso), df_mc.query(query_iso), qs, x, xtitle, xname, target, plotsdir, final=True)
+        else: 
 #            draw_hist(df_data, df_mc, target, fig_name, bins, histranges[target], mc_weights=df_mc['weight_clf'], logplot=logplots[target], final=False, sysuncer=False)
-#             
-#            for x, xtitle, xname in zip(xs, xtitles, xnames): 
-#                draw_mean_plot(EBEE, df_data, df_mc, x, xtitle, xname, target, plotsdir, final=False)
-#                draw_dist_plot(EBEE, df_data, df_mc, qs, x, xtitle, xname, target, plotsdir, final=False)
+             
+            for x, xtitle, xname in zip(xs, xtitles, xnames): 
+                draw_mean_plot(EBEE, df_data, df_mc, x, xtitle, xname, target, plotsdir, final=True)
+                draw_dist_plot(EBEE, df_data, df_mc, qs, x, xtitle, xname, target, plotsdir, final=True)
 
   
-    draw_hist(
-        df_data, df_mc, 
-        phoIDname, 
-        '{}/data_mc_dist_{}_{}'.format(plotsdir, EBEE, phoIDname),
-#        '{}/data_mc_dist_{}_{}_uncer'.format(plotsdir, EBEE, phoIDname),
-#        '{}/data_mc_dist_{}_{}_uncer2'.format(plotsdir, EBEE, phoIDname),
-        bins = bins, 
-        histrange = (-0.8, 1.),
-        mc_weights = df_mc['weight_clf'], 
-        final = True, 
-        sysuncer = False, 
-        )
-#
-#    for x, xtitle, xname in zip(xs, xtitles, xnames): 
-#        draw_mean_plot(EBEE, df_data, df_mc, x, xtitle, xname, phoIDname, plotsdir, final=False)
-#        draw_dist_plot(EBEE, df_data, df_mc, qs, x, xtitle, xname, phoIDname, plotsdir, final=False)
+#    draw_hist(
+#        df_data, df_mc, 
+#        phoIDname, 
+#        '{}/data_mc_dist_{}_{}'.format(plotsdir, EBEE, phoIDname),
+##        '{}/data_mc_dist_{}_{}_uncer'.format(plotsdir, EBEE, phoIDname),
+##        '{}/data_mc_dist_{}_{}_uncer2'.format(plotsdir, EBEE, phoIDname),
+#        bins = bins, 
+#        histrange = (-0.8, 1.),
+#        mc_weights = df_mc['weight_clf'], 
+#        final = True, 
+#        sysuncer = True, 
+#        )
+
+    for x, xtitle, xname in zip(xs, xtitles, xnames): 
+        draw_mean_plot(EBEE, df_data, df_mc, x, xtitle, xname, phoIDname, plotsdir, final=True)
+        draw_dist_plot(EBEE, df_data, df_mc, qs, x, xtitle, xname, phoIDname, plotsdir, final=True)
 
 
 
