@@ -46,6 +46,10 @@ class quantileRegressionNeuralNet(object):
             self.dfs['data'] = pd.read_hdf(f'{datasetDir}/{dataName}').sample(nEvt, random_state=random_state).reset_index(drop=True) 
             self.dfs['mc'] = pd.read_hdf(f'{datasetDir}/{mcName}').sample(nEvt, random_state=random_state).reset_index(drop=True) 
 
+    def cutDatasets(self, cut): 
+        self.dfs['data'] = self.dfs['data'].query(cut)
+        self.dfs['mc'] = self.dfs['mc'].query(cut)
+
     def transform(self, trans_vars, transformer, trans_type='standard', **kwargs): 
         self.trans_vars = trans_vars
         self.transformer = transformer
@@ -70,7 +74,7 @@ class quantileRegressionNeuralNet(object):
     def get_transformer(self):
         return self.transformer
 
-    def setupNN(self, num_hidden_layers, num_connected_layers, num_units, activations, dropout=None, gauss_std=None):
+    def setupNN(self, num_hidden_layers, num_units, activations, num_connected_layers=None, dropout=None, gauss_std=None):
         self.num_hidden_layers = num_hidden_layers
         self.num_connected_layers = num_connected_layers
         self.num_units = num_units
@@ -176,9 +180,57 @@ class quantileRegressionNeuralNet(object):
 
 
 
-    def trainFinal(self, *args, **kwargs): 
-        pass
+    def trainFinal(self, transformer_features, transformer_targets, var_type, *args, variables=None, train_df=None, history_fig=None, **kwargs): 
 
+        if train_df is None: 
+            self.df_corr = self.dfs['mc']
+        else: 
+            self.df_corr = pd.read_hdf(train_df).reset_index(drop=True) 
+        if not all(var in self.df_corr.columns for var in [f'{x}_corr' for x in self.variables]):
+            raise('The loaded MC dataframe is not completely corrected. Please correct it firstly')
+
+        # compute var_corr - var as target
+        if variables is None: 
+            variables = self.variables 
+        features = self.kinrho+variables
+
+        vars_corr_diff = [f'{var}_corr_diff' for var in variables]
+        for var in variables
+            self.df_corr[f'{var}_corr_diff'] = [self.df_corr[f'{var}_corr'] - self.df_corr[var]
+
+        transform_final(features, transformer_features, vars_corr_diff, transformer_targets)
+
+        sample_weight = self.df_corr.loc[:,'ml_weight']
+        X = self.df_corr.loc[:,features]
+        Y = self.df_corr.loc[:,vars_corr_diff]
+    
+        model_file = '{}/mc_{}_{}_final'.format(self.modeldir, self.EBEE, var_type)
+        history, eval_results = trainNN(
+            X, Y, 
+            self.num_hidden_layers, 
+            self.num_units, 
+            self.act,
+            *args,  
+            sample_weight = sample_weight,
+            epochs = 1000, 
+            save_file = model_file, 
+            **kwargs,
+            )
+
+        if history_fig is not None: 
+            self.drawTrainingHistories(history, history_fig)
+
+
+    def transform_final(self, features, transformer_features, targets, transformer_targets):
+
+        self.df_corr.loc[:,features] = transform(self.df_corr.loc[:,features], transformer_features, features)
+    
+        try: 
+            self.df_corr.loc[:,targets] = transform(self.df_corr.loc[:,targets], transformer_targets, targets)
+        except FileNotFoundError: 
+            fit_standard_scaler(self.df_corr.loc[:,targets], targets, transformer_targets)
+            self.df_corr.loc[:,targets] = transform(self.df_corr.loc[:,targets], transformer_targets, targets)
+ 
     @staticmethod
     def standardScale(df, fileName, varNames):
         try: 
