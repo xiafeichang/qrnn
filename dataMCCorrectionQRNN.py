@@ -1,8 +1,5 @@
 import warnings 
-import argparse
 import os
-import time
-import yaml
 import numpy as np
 import pandas as pd
 import matplotlib
@@ -12,15 +9,14 @@ from sklearn import preprocessing
 import pickle
 import gzip
 
-from qrnn import trainQuantile, predict, scale
-from clf_Iso import trainClfp0t, trainClf3Cat
+from qrnn import trainQuantile, predict
 from mylib.transformer import fit_standard_scaler, fit_quantile_transformer, fit_power_transformer, transform, inverse_transform
 from mylib.IdMVAComputer import helpComputeIdMva
 from mylib.tools import *
 
 
 
-class quantileRegressionNeuralNet(object): 
+class dataMCCorrector(object): 
     def __init__(self, variables, EBEE, modelDir, plotsDir,quantiles=None, weight_name=None):
         self.kinrho = ['probePt','probeScEta','probePhi','rho']
         self.variables = variables
