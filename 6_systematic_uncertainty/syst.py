@@ -9,6 +9,9 @@ matplotlib.use('cairo')
 matplotlib.rcParams['text.usetex'] = True
 matplotlib.rcParams['font.family'] = 'Helvetica'
 
+import sys
+sys.path.append('../')
+
 from mylib.IdMVAComputer import helpComputeIdMva
 from mylib.tools import weighted_quantiles
 
