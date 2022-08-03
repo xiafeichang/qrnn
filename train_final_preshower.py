@@ -24,8 +24,8 @@ def main(options):
         nEvt = 820000
     else: 
         inputmc = 'dfs_corr/df_mc_EE_train_corr.h5'
-        nEvt = 1500000
-        print(f"Wrong argument '-s' ('--split'), argument must have value 1 or 2. Now using defalt dataframe {inputtrain}")
+        nEvt = 850000
+        print(f"Wrong argument '-s' ('--split'), argument must have value 1 or 2. Now using defalt dataframe {inputmc}")
 #    inputdata = 'weighted_dfs/df_data_EE_train.h5'
 #    inputmc = 'dfs_corr/df_mc_EE_train_corr.h5'
    

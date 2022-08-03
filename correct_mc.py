@@ -26,18 +26,27 @@ def main(options):
     print('data_type: ', data_type)
     var_type = options.var_type
     spl = options.split
-    final = True # here final stands for if correct preshower variable and compute photon ID MVA
+
+    if options.final is not None:
+        if options.final.lower() == 'yes':
+            final = True # here final stands for if correct preshower variable and compute photon ID MVA
+        else: 
+            final = False
+    else: 
+        final = False
     
     if var_type == 'all': 
-        iptdir = 'tmp_dfs/all'
-        inputmc = f'df_mc_{EBEE}_all.h5'
+#        iptdir = 'tmp_dfs/all'
+#        inputmc = f'df_mc_{EBEE}_all.h5'
+        iptdir = 'dfs_sys'
+        inputmc = f'df_mc_{EBEE}_all_corr_final.h5'
     elif spl in [1, 2]: 
         iptdir = 'tmp_dfs/weightedsys'
         inputmc = f'df_mc_{EBEE}_Iso_{data_type}_split{spl}.h5'
     else: 
         iptdir = 'tmp_dfs/weighted0.9'
         inputmc = f'df_mc_{EBEE}_Iso_{data_type}.h5'
-        warnings.warn(f"Wrong argument '-s' ('--split'), argument must have value 1 or 2. Now using defalt dataframe {iptdir}/{inputmc}")
+        warnings.warn(f'Wrong argument "-s" ("--split"), argument must have value 1 or 2. Now using defalt dataframe {iptdir}/{inputmc}')
     if data_type == 'test': 
         inputmc = inputmc.replace(f'_split{spl}','')
     if var_type == 'SS':
@@ -57,10 +66,17 @@ def main(options):
         outdir = f'dfs_sys/split{spl}'
     else:
         modeldir = 'chained_models'
-        outdir   = 'dfs_corr'
+#        outdir   = 'dfs_corr'
+        outdir   = 'dfs_sys'
 
     print(f'using models from {modeldir}, corrected dataframes will be saved in {outdir}')
  
+    # transform features and target to apply qrnn
+    df_mc['probeScEta_orignal'] = df_mc['probeScEta']
+    transformer_file = 'data_{}'.format(EBEE)
+    df_mc.loc[:,kinrho+variables] = transform(df_mc.loc[:,kinrho+variables], transformer_file, kinrho+variables)
+    print(df_mc)
+    
     if var_type == 'Iso' or var_type == 'all': 
         # shift isolation variables
         print(f'shifting mc with classifiers and tail regressor for {isoVarsPh}')
@@ -86,13 +102,7 @@ def main(options):
         df_mc['probeChIso03worst_shift'] = Y_shifted[:,1]
 
          
-    # transform features and target to apply qrnn
-    df_mc['probeScEta_orignal'] = df_mc['probeScEta']
-    transformer_file = 'data_{}'.format(EBEE)
-    df_mc.loc[:,kinrho+variables] = transform(df_mc.loc[:,kinrho+variables], transformer_file, kinrho+variables)
-    print(df_mc)
-    
-   
+  
     # correct
     corr_start = time()
     #target = variables[5]
@@ -101,33 +111,33 @@ def main(options):
     else: 
         vars_qrnn = variables+preshower
 
-    if var_type == 'SS' or var_type == 'all':
-        for target in variables: 
-            features = kinrho + ['{}_corr'.format(x) for x in variables[:variables.index(target)]]
-            
-            X = df_mc.loc[:,features]
-            Y = df_mc.loc[:,target]
-            
-            models_mc = '{}/{}_{}_{}'.format(modeldir, 'mc', EBEE, target)
-            models_d = '{}/{}_{}_{}'.format(modeldir, 'data', EBEE, target)
-            print('Correct {} with features {}'.format(target, features))
-            df_mc['{}_corr'.format(target)] = parallelize(applyCorrection, X, Y, models_mc, models_d, diz=False)
-
-        if final:
-            print('Correct {} with features {}'.format(preshower[0], features))
-            if EBEE == 'EE': 
-                features = kinrho + ['{}_corr'.format(x) for x in variables]
-#                df_mc.loc[np.abs(df_mc['probeScEta_orignal'])<=1.653, '{}_corr'.format(preshower[0])] = df_mc.loc[np.abs(df_mc['probeScEta_orignal'])<=1.653, preshower[0]]
-                df_mc.loc[np.abs(df_mc['probeScEta_orignal'])<=1.653, '{}_corr'.format(preshower[0])] = 0.
-                df_mc.loc[np.abs(df_mc['probeScEta_orignal'])>1.653, '{}_corr'.format(preshower[0])] = parallelize(applyCorrection, 
-                    df_mc.loc[np.abs(df_mc['probeScEta_orignal'])>1.653, features], 
-                    df_mc.loc[np.abs(df_mc['probeScEta_orignal'])>1.653, preshower[0]], 
-                    '{}/{}_{}_{}'.format(modeldir, 'mc', EBEE, preshower[0]),
-                    '{}/{}_{}_{}'.format(modeldir, 'data', EBEE, preshower[0]),
-                    diz=False, 
-                    )
-            else: 
-                df_mc['{}_corr'.format(preshower[0])] = 0.
+#    if var_type == 'SS' or var_type == 'all':
+#        for target in variables: 
+#            features = kinrho + ['{}_corr'.format(x) for x in variables[:variables.index(target)]]
+#            
+#            X = df_mc.loc[:,features]
+#            Y = df_mc.loc[:,target]
+#            
+#            models_mc = '{}/{}_{}_{}'.format(modeldir, 'mc', EBEE, target)
+#            models_d = '{}/{}_{}_{}'.format(modeldir, 'data', EBEE, target)
+#            print('Correct {} with features {}'.format(target, features))
+#            df_mc['{}_corr'.format(target)] = parallelize(applyCorrection, X, Y, models_mc, models_d, diz=False)
+#
+##        if final:
+#        print('Correct {} with features {}'.format(preshower[0], features))
+#        if EBEE == 'EE': 
+#            features = kinrho + ['{}_corr'.format(x) for x in variables]
+##            df_mc.loc[np.abs(df_mc['probeScEta_orignal'])<=1.653, '{}_corr'.format(preshower[0])] = df_mc.loc[np.abs(df_mc['probeScEta_orignal'])<=1.653, preshower[0]]
+#            df_mc.loc[np.abs(df_mc['probeScEta_orignal'])<=1.653, '{}_corr'.format(preshower[0])] = 0.
+#            df_mc.loc[np.abs(df_mc['probeScEta_orignal'])>1.653, '{}_corr'.format(preshower[0])] = parallelize(applyCorrection, 
+#                df_mc.loc[np.abs(df_mc['probeScEta_orignal'])>1.653, features], 
+#                df_mc.loc[np.abs(df_mc['probeScEta_orignal'])>1.653, preshower[0]], 
+#                '{}/{}_{}_{}'.format(modeldir, 'mc', EBEE, preshower[0]),
+#                '{}/{}_{}_{}'.format(modeldir, 'data', EBEE, preshower[0]),
+#                diz=False, 
+#                )
+#        else: 
+#            df_mc['{}_corr'.format(preshower[0])] = 0.
 
     
     if var_type == 'Iso' or var_type == 'all':
@@ -151,8 +161,8 @@ def main(options):
             print('Correct {} with features {}'.format(target, features))
             df_mc['{}_corr'.format(target)] = parallelize(applyCorrection, X, Y, models_mc, models_d, diz=True)
  
+    vars_corr = ['{}_corr'.format(target) for target in variables] 
     if var_type == 'SS' or var_type == 'all':
-        vars_corr = ['{}_corr'.format(target) for target in variables] 
         df_mc.loc[:,vars_corr] = inverse_transform(df_mc.loc[:,vars_corr], transformer_file, vars_corr)
     df_mc.loc[:,variables] = inverse_transform(df_mc.loc[:,variables], transformer_file, variables)
     df_mc.loc[:,kinrho] = inverse_transform(df_mc.loc[:,kinrho], transformer_file, kinrho)
@@ -163,7 +173,12 @@ def main(options):
         isoVars = isoVarsPh+isoVarsCh
         isoVars_shift = ['{}_shift'.format(var) for var in isoVars]
         isoVars_corr = ['{}_corr'.format(var) for var in isoVars]
-        print(df_mc.loc[:,kinrho+vars_qrnn+vars_corr+isoVars+isoVars_shift+isoVars_corr])
+        if var_type == 'SS':
+            print(df_mc.loc[:,kinrho+vars_qrnn+vars_corr])
+        elif var_type == 'Iso':
+            print(df_mc.loc[:,kinrho+isoVars+isoVars_shift+isoVars_corr])
+        elif vars_corr == 'all':
+            print(df_mc.loc[:,kinrho+vars_qrnn+vars_corr+isoVars+isoVars_shift+isoVars_corr])
         print('time spent in correction: {} s'.format(time() - corr_start))
 
         id_start = time()
@@ -173,10 +188,10 @@ def main(options):
         phoIDname = 'probePhoIdMVA'
         print('Compute photon ID MVA for uncorrected mc')
         stride = int(df_mc.index.size/10) + 1
-        df_mc[phoIDname] = np.concatenate(Parallel(n_jobs=10, verbose=20)(delayed(helpComputeIdMva)(weightsEB, weightsEE, EBEE, vars_qrnn+isoVars, df_mc[ch:ch+stride], 'data', False) for ch in range(0, df_data.index.size, stride))) # variables+isoVars
+        df_mc[phoIDname] = np.concatenate(Parallel(n_jobs=10, verbose=20)(delayed(helpComputeIdMva)(weightsEB, weightsEE, EBEE, vars_qrnn+isoVars, df_mc[ch:ch+stride], 'data', False) for ch in range(0, df_mc.index.size, stride))) # variables+isoVars
 #        df_mc[phoIDname] = helpComputeIdMva(weightsEB, weightsEE, EBEE, vars_qrnn+isoVars, df_mc, 'data', False) # +isoVars 
         print('Compute photon ID MVA for corrected mc')
-        df_mc['{}_corr'.format(phoIDname)] = np.concatenate(Parallel(n_jobs=10, verbose=20)(delayed(helpComputeIdMva)(weightsEB, weightsEE, EBEE, vars_qrnn+isoVars, df_mc[ch:ch+stride], 'qr', False) for ch in range(0, df_data.index.size, stride))) # variables+isoVars
+        df_mc['{}_corr'.format(phoIDname)] = np.concatenate(Parallel(n_jobs=10, verbose=20)(delayed(helpComputeIdMva)(weightsEB, weightsEE, EBEE, vars_qrnn+isoVars, df_mc[ch:ch+stride], 'qr', False) for ch in range(0, df_mc.index.size, stride))) # variables+isoVars
 #        df_mc['{}_corr'.format(phoIDname)] = helpComputeIdMva(weightsEB, weightsEE, EBEE, vars_qrnn+isoVars, df_mc, 'qr', False) # +isoVars 
         print('time spent in computing photon ID MVA: {} s'.format(time() - id_start))
 
@@ -198,5 +213,6 @@ if __name__ == "__main__":
     optArgs.add_argument('-t','--data_type', action='store', type=str)
     optArgs.add_argument('-v','--var_type', action='store', type=str)
     optArgs.add_argument('-s','--split', action='store', type=int)
+    optArgs.add_argument('-f','--final', action='store', type=str)
     options = parser.parse_args()
     main(options)

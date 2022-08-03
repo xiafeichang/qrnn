@@ -134,6 +134,13 @@ def draw_corr_plots(corr, title, figname, cmap='seismic', cbarlabel='', minann=N
     texts = annotate_heatmap(im, minann=minann, threshold=0.5*max(kwargs['vmax'], kwargs['vmin']))
 
     ax.set_title(title, fontsize='x-large')
+
+    ax.hlines([3.5, 9.5],3.5,9.5, colors='blue', linewidth=2.5)
+    ax.vlines([3.5, 9.5],3.5,9.5, colors='blue', linewidth=2.5)
+
+    ax.hlines([9.5, 12.5],9.5,12.5, colors='purple', linewidth=2.5)
+    ax.vlines([9.5, 12.5],9.5,12.5, colors='purple', linewidth=2.5)
+
     fig.savefig(f'{figname}.png')
     fig.savefig(f'{figname}.pdf')
 

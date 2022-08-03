@@ -3,8 +3,8 @@
 
 #SBATCH -J train_qrnn
 ##SBATCH -n 1
-#SBATCH --cpus-per-task=5
-#SBATCH --mem=30G
+#SBATCH --cpus-per-task=10
+#SBATCH --mem=32G
 #SBATCH -t 0-12:00
 ##SBATCH --partition=long
 
@@ -25,11 +25,11 @@
 #python train_Iso_mc.py -e EB -v Ph -r yes
 #python train_Iso.py -e EB -v Ch
 #python train_Iso_mc.py -e EB -v Ch -r yes
-#python check_results.py -e $1 -n $2
+python check_results.py -e $1 -n $2
 
 #python test_pred.py -e $1 -n $2 -v Ch
 
-python check_final.py -e $1 -n $2
+#python check_final.py -e $1 -n $2
 
 #python syst.py -e $1
 

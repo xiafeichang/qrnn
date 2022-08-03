@@ -35,8 +35,8 @@ def main(options):
     if spl in [1, 2]: 
         inputtrain = 'tmp_dfs/weightedsys/df_{}_{}_Iso_train_split{}.h5'.format(data_key, EBEE, spl)
     else: 
-        inputtrain = 'weighted_dfs/df_{}_{}_Iso_train.h5'.format(data_key, EBEE)
-        print(f"Wrong argument '-s' ('--split'), argument must have value 1 or 2. Now using defalt dataframe {inputtrain}")
+        inputtrain = 'tmp_dfs/weighted0.9/df_{}_{}_Iso_train.h5'.format(data_key, EBEE)
+        print(f'Wrong argument "-s" ("--split"), argument must have value 1 or 2. Now using defalt dataframe {inputtrain}')
 #    inputtrain = 'tmp_dfs/weighted0.9/df_{}_{}_Iso_train.h5'.format(data_key, EBEE)
    
     #load dataframe
@@ -54,6 +54,10 @@ def main(options):
         plotsdir = 'plots'
 
 
+
+    #transform features and targets
+    transformer_file = 'data_{}'.format(EBEE)
+    df_train.loc[:,kinrho] = transform(df_train.loc[:,kinrho], transformer_file, kinrho)
 
     # train classifier for peak or tail
     clf_start = time.time()
@@ -94,10 +98,6 @@ def main(options):
 #    clf_lc_fig.savefig(fig_name)
 
     # train qrnn
-    #transform features and targets
-    transformer_file = 'data_{}'.format(EBEE)
-    df_train.loc[:,kinrho] = transform(df_train.loc[:,kinrho], transformer_file, kinrho)
-
     batch_size = pow(2, 13)
     num_hidden_layers = 5
     num_connected_layers = 2

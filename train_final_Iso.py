@@ -26,8 +26,9 @@ def main(options):
     if spl in [1, 2]: 
         inputmc = 'dfs_sys/split{}/df_mc_{}_Iso_train_split{}_corr.h5'.format(spl, EBEE, spl)
     else: 
-        inputmc = 'dfs_corr/df_mc_{}_Iso_train_corr.h5'.format(EBEE)
-        print(f"Wrong argument '-s' ('--split'), argument must have value 1 or 2. Now using defalt dataframe {inputtrain}")
+#        inputmc = 'dfs_corr/df_mc_{}_Iso_train_corr.h5'.format(EBEE)
+        inputmc = 'dfs_sys/df_mc_{}_Iso_train_corr.h5'.format(EBEE)
+        print(f"Wrong argument '-s' ('--split'), argument must have value 1 or 2. Now using defalt dataframe {inputmc}")
 #    inputdata = 'weighted_dfs/df_data_{}_Iso_train.h5'.format(EBEE)
 #    inputmc = 'dfs_corr/df_mc_{}_Iso_train_corr.h5'.format(EBEE)
    

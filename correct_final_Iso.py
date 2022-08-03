@@ -1,3 +1,4 @@
+import warnings 
 import argparse
 import time
 import pandas as pd
@@ -20,15 +21,17 @@ def main(options):
     
     if spl in [1, 2]: 
         if var_type == 'all': 
-            iptdir = f'dfs_sys/split{spl}'
+#            iptdir = f'dfs_sys/split{spl}'
+            iptdir = f'dfs_sys'
             inputmc = f'df_mc_{EBEE}_all_corr_final.h5'
         else:
             iptdir = f'dfs_sys/split{spl}'
             inputmc = f'df_mc_{EBEE}_Iso_{data_type}_split{spl}_corr.h5'
     else: 
         if var_type == 'all': 
-            iptdir = f'dfs_corr'
-            inputmc = f'df_mc_{EBEE}_all_corr.h5'
+#            iptdir = f'dfs_corr'
+            iptdir = f'dfs_sys'
+            inputmc = f'df_mc_{EBEE}_all_corr_final.h5'
         else:
             iptdir = 'dfs_corr'
             inputmc = f'df_mc_{EBEE}_Iso_{data_type}_corr.h5'
@@ -50,7 +53,8 @@ def main(options):
         outdir = f'dfs_sys/split{spl}'
     else:
         modeldir = 'chained_models'
-        outdir   = 'dfs_corr'
+#        outdir   = 'dfs_corr'
+        outdir   = 'dfs_sys'
     print(f'using models from {modeldir}, corrected dataframes will be saved in {outdir}')
  
     if 'probeScEta_orignal' not in df_mc.keys():

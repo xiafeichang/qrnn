@@ -106,7 +106,7 @@ def main(options):
                 l2lam = 1.e-3, 
                 opt = 'Adadelta', lr = 0.5, 
                 batch_size = batch_size, 
-                epochs = 1000, 
+                epochs = 2, 
                 save_file = model_file_mc, 
                 )
 

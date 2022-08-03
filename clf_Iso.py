@@ -25,7 +25,7 @@ def trainClfp0t(df, features, target, clf_name, val_split=0.1, tree_method='auto
 #    Y_val = df_val.loc[:,'p0t_{}'.format(target)]
 #    sample_weight_val = np.sqrt(df_val.loc[:,'ml_weight'])
 
-    clf = xgb.XGBClassifier(n_estimators=300, learning_rate=0.05, maxDepth=10, subsample=0.5, gamma=0, n_jobs=n_jobs)    # max_depth=10, tree_method=tree_method
+    clf = xgb.XGBClassifier(n_estimators=300, learning_rate=0.05, maxDepth=10, subsample=0.5, gamma=0, tree_method=tree_method, n_jobs=n_jobs)    # max_depth=10, tree_method=tree_method
 #    with parallel_backend(backend):
     clf.fit(
         X_train, Y_train, 
@@ -57,7 +57,7 @@ def trainClf3Cat(df, features, target, clf_name, val_split=0.1, tree_method='aut
 #    Y_val = df_val.loc[:,'ChIsoCat']
 #    sample_weight_val = np.sqrt(df_val.loc[:,'ml_weight'])
 
-    clf = xgb.XGBClassifier(n_estimators=500, learning_rate=0.05, maxDepth=10, gamma=0, n_jobs=n_jobs)    # max_depth=10, tree_method=tree_method
+    clf = xgb.XGBClassifier(n_estimators=500, learning_rate=0.05, maxDepth=10, gamma=0, tree_method=tree_method, n_jobs=n_jobs)    # max_depth=10, tree_method=tree_method
 #    with parallel_backend(backend):
     clf.fit(
         X_train, Y_train, 

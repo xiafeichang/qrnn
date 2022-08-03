@@ -130,7 +130,8 @@ def sys_shift(df, var, nshifts=5):
 def main(options):
 
     EBEE = options.EBEE
-    df = pd.read_hdf(f'dfs_corr/df_mc_{EBEE}_all_corr_final.h5') 
+#    df = pd.read_hdf(f'dfs_corr/df_mc_{EBEE}_all_corr_final.h5') 
+    df = pd.read_hdf(f'dfs_sys/df_mc_{EBEE}_all_corr_final.h5') 
     df1 = pd.read_hdf(f'dfs_sys/split1/df_mc_{EBEE}_all_corr_final.h5') 
     df2 = pd.read_hdf(f'dfs_sys/split2/df_mc_{EBEE}_all_corr_final.h5') 
 

@@ -188,24 +188,25 @@ def get_compiled_model(input_dim, output_dim, num_hidden_layers, num_units, act,
 
     x = inpt
 
-    for i in range(num_normal_layers): 
+    for i in range(num_hidden_layers-num_normal_layers): 
+        x = tfp.layers.DenseVariational(
+            units = num_units[i], 
+            make_prior_fn = prior, 
+            make_posterior_fn = posterior, 
+            kl_weight = 1., #1./train_size
+            activation = act[i], 
+            )(x)
+        if dp is not None:
+            x = Dropout(dp[i])(x)
+
+    for i in range(num_hidden_layers-num_normal_layers, num_hidden_layers): 
         x = Dense(num_units[i], use_bias=True, kernel_initializer='he_normal', bias_initializer='he_normal',
                   kernel_regularizer=regularizers.l2(1.e-3), 
                   activation=act[i])(x)
         if dp is not None:
             x = Dropout(dp[i])(x)
 
-    for i in range(num_normal_layers, num_hidden_layers): 
-        x = tfp.layers.DenseVariational(
-            units = num_units[i], 
-            make_prior_fn = prior, 
-            make_posterior_fn = posterior, 
-            kl_weight = 1./train_size, 
-            activation = act[i], 
-            )(x)
-        if dp is not None:
-            x = Dropout(dp[i])(x)
-    
+   
     if use_proba_output: 
         x = Dense(2*output_dim, kernel_initializer='he_normal', bias_initializer='he_normal')(x)
         output = tfp.layers.IndependentNormal(output_dim)(x)
@@ -258,7 +259,8 @@ def prior(kernel_size, bias_size, dtype=None):
         [
             tfp.layers.DistributionLambda(
                 lambda t: tfp.distributions.MultivariateNormalDiag(
-                    loc=tf.zeros(n), scale_diag=tf.ones(n)
+                    loc=tf.ones(n), scale_diag=tf.ones(n)
+#                    loc=tf.zeros(n), scale_diag=tf.ones(n)
                 )
             )
         ]
