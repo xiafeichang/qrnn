@@ -55,10 +55,6 @@ def main(options):
 
 
 
-    #transform features and targets
-    transformer_file = 'data_{}'.format(EBEE)
-    df_train.loc[:,kinrho] = transform(df_train.loc[:,kinrho], transformer_file, kinrho)
-
     # train classifier for peak or tail
     clf_start = time.time()
     if len(variables)>1: 
@@ -96,6 +92,10 @@ def main(options):
 #    plt.ylabel('log loss')
 #    plt.legend()
 #    clf_lc_fig.savefig(fig_name)
+
+    #transform features and targets
+    transformer_file = 'data_{}'.format(EBEE)
+    df_train.loc[:,kinrho] = transform(df_train.loc[:,kinrho], transformer_file, kinrho)
 
     # train qrnn
     batch_size = pow(2, 13)

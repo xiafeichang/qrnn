@@ -38,7 +38,7 @@ def main(options):
     if var_type == 'all': 
 #        iptdir = 'tmp_dfs/all'
 #        inputmc = f'df_mc_{EBEE}_all.h5'
-        iptdir = 'dfs_sys'
+        iptdir = 'dfs_sys/backup'
         inputmc = f'df_mc_{EBEE}_all_corr_final.h5'
     elif spl in [1, 2]: 
         iptdir = 'tmp_dfs/weightedsys'
@@ -52,6 +52,7 @@ def main(options):
     if var_type == 'SS':
         inputmc = inputmc.replace('_Iso','')
         
+    print(f'>>>>>>>>>>>>>>>>>>>>>>>>correcting file {iptdir}/{inputmc}')
     df_mc = (pd.read_hdf(f'{iptdir}/{inputmc}')).reset_index(drop=True)
 
 #    df_mc = (pd.read_hdf(f'tmp_dfs/weighted0.9/df_mc_{EBEE}_Iso_{data_type}.h5')).reset_index(drop=True)
@@ -71,12 +72,7 @@ def main(options):
 
     print(f'using models from {modeldir}, corrected dataframes will be saved in {outdir}')
  
-    # transform features and target to apply qrnn
-    df_mc['probeScEta_orignal'] = df_mc['probeScEta']
-    transformer_file = 'data_{}'.format(EBEE)
-    df_mc.loc[:,kinrho+variables] = transform(df_mc.loc[:,kinrho+variables], transformer_file, kinrho+variables)
-    print(df_mc)
-    
+   
     if var_type == 'Iso' or var_type == 'all': 
         # shift isolation variables
         print(f'shifting mc with classifiers and tail regressor for {isoVarsPh}')
@@ -102,7 +98,12 @@ def main(options):
         df_mc['probeChIso03worst_shift'] = Y_shifted[:,1]
 
          
-  
+    # transform features and target to apply qrnn
+    df_mc['probeScEta_orignal'] = df_mc['probeScEta']
+    transformer_file = 'data_{}'.format(EBEE)
+    df_mc.loc[:,kinrho+variables] = transform(df_mc.loc[:,kinrho+variables], transformer_file, kinrho+variables)
+    print(df_mc)
+   
     # correct
     corr_start = time()
     #target = variables[5]
@@ -200,7 +201,10 @@ def main(options):
 #    df_mc.to_hdf('{}/df_mc_{}_{}_corr.h5'.format(outdir,EBEE,data_type),'df',mode='w',format='t')
 #    df_mc.to_hdf('{}/df_mc_{}_Iso_{}_corr.h5'.format(outdir,EBEE,data_type),'df',mode='w',format='t')
 
-    df_mc.to_hdf(f'{outdir}/{inputmc}'.replace('.h5', '_corr.h5'),'df',mode='w',format='t')
+    if inputmc.endswith('_corr.h5') or inputmc.endswith('_corr_final.h5'):
+        df_mc.to_hdf(f'{outdir}/{inputmc}','df',mode='w',format='t')
+    else: 
+        df_mc.to_hdf(f'{outdir}/{inputmc}'.replace('.h5', '_corr.h5'),'df',mode='w',format='t')
 
 
 

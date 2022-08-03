@@ -243,8 +243,8 @@ def draw_hist(df_data, df_mc, target, fig_name, bins=None, histrange=None, densi
     mc_corr_n, _, _ = ax1.hist(df_mc['{}_corr'.format(target)], range=histrange, bins=bins, density=density, weights=mc_weights, histtype='step', color='blue', label='MC corrected')
 
     if final: 
-#        mc_final_n, _, _ = ax1.hist(df_mc['{}_corr_final'.format(target)], range=histrange, bins=bins, density=density, weights=mc_weights, histtype='step', color='cyan', label='MC corrected final')
-        mc_final_n, _, _ = ax1.hist(df_mc['{}_corr_final'.format(target)], range=histrange, bins=bins, density=density, weights=mc_weights, histtype='step', color='blue', label='MC corrected final')
+        mc_final_n, _, _ = ax1.hist(df_mc['{}_corr_final'.format(target)], range=histrange, bins=bins, density=density, weights=mc_weights, histtype='step', color='cyan', label='MC corrected final')
+#        mc_final_n, _, _ = ax1.hist(df_mc['{}_corr_final'.format(target)], range=histrange, bins=bins, density=density, weights=mc_weights, histtype='step', color='blue', label='MC corrected final')
 
     if sysuncer: 
 #        mc_corr_n, mc_corr_nsyserr = hists_for_uncer(df_mc, [f'{target}_corr_{i}' for i in range(50)], bins=bins, range=histrange, weights=mc_weights, density=density)
@@ -296,8 +296,8 @@ def draw_hist(df_data, df_mc, target, fig_name, bins=None, histrange=None, densi
         mc_final_n = np.where(mc_final_n==0, 1.e-5, mc_final_n)
         ratio_final = data_n / mc_final_n
         ratio_final_err = np.sqrt(data_n + (data_n**2/mc_final_n)) / mc_final_n
-#        ax2.errorbar(x, ratio_final, ratio_final_err, xerr, fmt='.', elinewidth=1., capsize=1., color='cyan')
-        ax2.errorbar(x, ratio_final, ratio_final_err, xerr, fmt='.', elinewidth=1., capsize=1., color='blue')
+        ax2.errorbar(x, ratio_final, ratio_final_err, xerr, fmt='.', elinewidth=1., capsize=1., color='cyan')
+#        ax2.errorbar(x, ratio_final, ratio_final_err, xerr, fmt='.', elinewidth=1., capsize=1., color='blue')
 
     if sysuncer: 
         mc_corr_nerrup = np.where(mc_corr_nerrup==0, 1.e-5, mc_corr_nerrup)
@@ -406,15 +406,15 @@ def main(options):
     stride = int(df_data.index.size/10) + 1
     df_data[phoIDname] = np.concatenate(Parallel(n_jobs=10, verbose=20)(delayed(helpComputeIdMva)(weightsEB, weightsEE, EBEE, vars_qrnn+isoVars, df_data[ch:ch+stride], 'data', False) for ch in range(0, df_data.index.size, stride))) # variables+isoVars
 #    print('Compute photon ID MVA for uncorrected mc')
-    stride = int(df_mc.index.size/10) + 1
-    df_mc[phoIDname] = np.concatenate(Parallel(n_jobs=10, verbose=20)(delayed(helpComputeIdMva)(weightsEB, weightsEE, EBEE, vars_qrnn+isoVars, df_mc[ch:ch+stride], 'data', False) for ch in range(0, df_data.index.size, stride))) # variables+isoVars
-##    df_mc[phoIDname] = helpComputeIdMva(weightsEB, weightsEE, EBEE, vars_qrnn+isoVars, df_mc, 'data', False) # +isoVars 
-    print('Compute photon ID MVA for corrected mc')
-    df_mc['{}_corr'.format(phoIDname)] = np.concatenate(Parallel(n_jobs=10, verbose=20)(delayed(helpComputeIdMva)(weightsEB, weightsEE, EBEE, vars_qrnn+isoVars, df_mc[ch:ch+stride], 'qr', False) for ch in range(0, df_data.index.size, stride))) # variables+isoVars
+#    stride = int(df_mc.index.size/10) + 1
+#    df_mc[phoIDname] = np.concatenate(Parallel(n_jobs=10, verbose=20)(delayed(helpComputeIdMva)(weightsEB, weightsEE, EBEE, vars_qrnn+isoVars, df_mc[ch:ch+stride], 'data', False) for ch in range(0, df_data.index.size, stride))) # variables+isoVars
+###    df_mc[phoIDname] = helpComputeIdMva(weightsEB, weightsEE, EBEE, vars_qrnn+isoVars, df_mc, 'data', False) # +isoVars 
+#    print('Compute photon ID MVA for corrected mc')
+#    df_mc['{}_corr'.format(phoIDname)] = np.concatenate(Parallel(n_jobs=10, verbose=20)(delayed(helpComputeIdMva)(weightsEB, weightsEE, EBEE, vars_qrnn+isoVars, df_mc[ch:ch+stride], 'qr', False) for ch in range(0, df_data.index.size, stride))) # variables+isoVars
 ##    df_mc['{}_corr'.format(phoIDname)] = helpComputeIdMva(weightsEB, weightsEE, EBEE, vars_qrnn+isoVars, df_mc, 'qr', False) # +isoVars+preshower 
-    print('Compute photon ID MVA for final correction on mc')
-    df_mc['{}_corr_final'.format(phoIDname)] = np.concatenate(Parallel(n_jobs=10, verbose=20)(delayed(helpComputeIdMva)(weightsEB, weightsEE, EBEE, vars_qrnn+isoVars, df_mc[ch:ch+stride], 'final', False) for ch in range(0, df_data.index.size, stride))) # variables+isoVars
-#    df_mc['{}_corr_final'.format(phoIDname)] = helpComputeIdMva(weightsEB, weightsEE, EBEE, vars_qrnn+isoVars, df_mc, 'final', False) # +isoVars+preshower 
+#    print('Compute photon ID MVA for final correction on mc')
+#    df_mc['{}_corr_final'.format(phoIDname)] = np.concatenate(Parallel(n_jobs=10, verbose=20)(delayed(helpComputeIdMva)(weightsEB, weightsEE, EBEE, vars_qrnn+isoVars, df_mc[ch:ch+stride], 'final', False) for ch in range(0, df_data.index.size, stride))) # variables+isoVars
+##    df_mc['{}_corr_final'.format(phoIDname)] = helpComputeIdMva(weightsEB, weightsEE, EBEE, vars_qrnn+isoVars, df_mc, 'final', False) # +isoVars+preshower 
     print('time spent in computing photon ID MVA: {}-{:02d}:{:02d}:{:05.2f}'.format(*sec2HMS(time() - id_start)))
 
     print(df_mc.keys())
@@ -492,18 +492,18 @@ def main(options):
             draw_hist(df_data.query(query_preshower), df_mc.query(query_preshower), target, fig_name, bins, histranges[target], mc_weights=(df_mc.query(query_preshower))['weight_clf'], logplot=logplots[target], final=False)
              
             for x, xtitle, xname in zip(xs, xtitles, xnames): 
-                draw_mean_plot(EBEE, df_data.query(query_preshower), df_mc.query(query_preshower), x, xtitle, xname, target, plotsdir, final=True)
-                draw_dist_plot(EBEE, df_data.query(query_preshower), df_mc.query(query_preshower), qs, x, xtitle, xname, target, plotsdir, final=True)
+                draw_mean_plot(EBEE, df_data.query(query_preshower), df_mc.query(query_preshower), x, xtitle, xname, target, plotsdir, final=False)
+                draw_dist_plot(EBEE, df_data.query(query_preshower), df_mc.query(query_preshower), qs, x, xtitle, xname, target, plotsdir, final=False)
         elif target in isoVars: 
-            draw_hist(df_data, df_mc, target, fig_name, bins, histranges[target], mc_weights=df_mc['weight_clf'], logplot=logplots[target], showshift=False, final=True)
+            draw_hist(df_data, df_mc, target, fig_name, bins, histranges[target], mc_weights=df_mc['weight_clf'], logplot=logplots[target], showshift=True, final=False)
              
             if EBEE == 'EB':
                 query_iso = f'probeSigmaIeIe<0.0105'
             else: 
                 query_iso = f'probeSigmaIeIe<0.028'
             for x, xtitle, xname in zip(xs, xtitles, xnames): 
-                draw_mean_plot(EBEE, df_data.query(query_iso), df_mc.query(query_iso), x, xtitle, xname, target, plotsdir, final=True)
-                draw_dist_plot(EBEE, df_data.query(query_iso), df_mc.query(query_iso), qs, x, xtitle, xname, target, plotsdir, final=True)
+                draw_mean_plot(EBEE, df_data.query(query_iso), df_mc.query(query_iso), x, xtitle, xname, target, plotsdir, final=False)
+                draw_dist_plot(EBEE, df_data.query(query_iso), df_mc.query(query_iso), qs, x, xtitle, xname, target, plotsdir, final=False)
         else: 
             draw_hist(df_data, df_mc, target, fig_name, bins, histranges[target], mc_weights=df_mc['weight_clf'], logplot=logplots[target], final=False, sysuncer=False)
              

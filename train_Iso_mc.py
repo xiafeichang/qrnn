@@ -65,10 +65,6 @@ def main(options):
         plotsdir = 'plots'
 
 
-    #transform features and targets
-    transformer_file = 'data_{}'.format(EBEE)
-    df_train.loc[:,kinrho] = transform(df_train.loc[:,kinrho], transformer_file, kinrho)
-
     # train classifier for peak or tail
     clf_start = time.time()
     if len(variables)>1: 
@@ -118,6 +114,10 @@ def main(options):
 #    except: 
 #        print('Failed to draw learning curve for classifier training. Check if skipped because they are already exist')
 
+
+    #transform features and targets
+    transformer_file = 'data_{}'.format(EBEE)
+    df_train.loc[:,kinrho] = transform(df_train.loc[:,kinrho], transformer_file, kinrho)
 
     # train qrnn
     batch_size = pow(2, 13)

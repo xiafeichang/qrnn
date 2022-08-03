@@ -63,8 +63,8 @@ ispl=$3
 #    done
 #done
 
-#python correct_mc.py -e ${EBEE} -t train -v $2 #-f yes #-s ${ispl}
-python correct_final_Iso.py -e ${EBEE} -v all #-s ${ispl} 
+python correct_mc.py -e ${EBEE} -t train -v $2 -f yes #-s ${ispl}
+#python correct_final_Iso.py -e ${EBEE} -v all #-s ${ispl} 
 
 #python train_final_SS_uncer.py -e ${EBEE} -n ${nEvt} 
 #python correct_final_uncer.py -e ${EBEE} -t $2
