@@ -78,27 +78,32 @@ class dataMCCorrector(object):
         self.dropout = dropout
         self.gauss_std = gauss_std
 
-    def train(self, data_key, *args, targets=None, **kwargs, retrain=True, history_fig=None): 
+    def train(self, data_key, *args, targets=None, cut=None, retrain=True, history_fig=None, **kwargs): 
 
         if targets is None: 
             targets = self.variables
 
         if isinstance(targets, str): 
-            self._train1var(data_key, *args, targets, self.variables, **kwargs, retrain=retrain, history_fig=history_fig)
+            self._train1var(data_key, targets, self.variables, *args, cut=cut, retrain=retrain, history_fig=history_fig, **kwargs)
         else: 
             for target in targets: 
-                self._train1var(data_key, *args, target, targets, **kwargs, retrain=retrain, history_fig=history_fig)
+                self._train1var(data_key, target, targets, *args, cut=cut, retrain=retrain, history_fig=history_fig, **kwargs)
 
-    def _train1var(self, data_key, *args, target, variables, **kwargs, retrain=True, history_fig=None)
+    def _train1var(self, data_key, target, variables, *args, cut=None, retrain=False, history_fig=None, **kwargs)
+
+        if cut is None: 
+            df = self.dfs[data_key]
+        else: 
+            df = self.dfs[data_key].query(cut).reset_index(drop=True)
 
         if data_key == 'mc':
             features = self.kinrho + [f'{x}_corr' for x in variables[:variables.index(target)]]
         else: 
             features = self.kinrho + variables[:variables.index(target)]
 
-        X = self.dfs[data_key].loc[:,features]
-        Y = self.dfs[data_key].loc[:,target]
-        sample_weight = self.dfs[data_key].loc[:,'ml_weight']
+        X = df.loc[:,features]
+        Y = df.loc[:,target]
+        sample_weight = df.loc[:,'ml_weight']
 
         qs = self.qs
         qweights = compute_qweights(Y, qs, sample_weight)
@@ -107,7 +112,7 @@ class dataMCCorrector(object):
         if os.path.exists(model_file) and not retrain:  
             print(f'model {model_file} already exist, skip training')
         else: 
-            print(f'training new mc model for {target}')
+            print(f'training new {data_key} model for {target}')
             history, eval_results = trainQuantile(
                 X, Y, 
                 qs, qweights, 
@@ -147,7 +152,7 @@ class dataMCCorrector(object):
         else: 
             X = df.loc[:,features]
             Y = df.loc[:,target]
-            df[f'{target}_corr'] = parallelize(applyCorrection, X, Y, models_mc, models_d, diz=diz, n_jobs=10)
+            df[f'{target}_corr'] = parallelize(applyCorrection, X, Y, models_mc, models_d, n_jobs=n_jobs, diz=diz)
 
 
     def CorrectDatasets(self, outputDir, outputName, inputDir=None, inputName=None, trans_vars=None, transformer=None, n_jobs=10): 
@@ -176,48 +181,61 @@ class dataMCCorrector(object):
 
 
 
-    def trainFinal(self, transformer_features, transformer_targets, var_type, *args, variables=None, train_df=None, history_fig=None, **kwargs): 
+    def trainFinal(self, transformer_features, transformer_targets, var_type, *args, variables=None, train_df=None, cut=None, retrain=False, history_fig=None, **kwargs): 
 
         if train_df is None: 
-            self.df_corr = self.dfs['mc']
+            if cut is None:
+                self.df_corr = self.dfs['mc']
+            else: 
+                self.df_corr = self.dfs['mc'].query(cut).reset_index(drop=True)
         else: 
-            self.df_corr = pd.read_hdf(train_df).reset_index(drop=True) 
+            if cut is None:
+                self.df_corr = pd.read_hdf(train_df).reset_index(drop=True) 
+            else: 
+                self.df_corr = (pd.read_hdf(train_df).query(cut)).reset_index(drop=True)
+
         if not all(var in self.df_corr.columns for var in [f'{x}_corr' for x in self.variables]):
             raise('The loaded MC dataframe is not completely corrected. Please correct it firstly')
 
         # compute var_corr - var as target
         if variables is None: 
             variables = self.variables 
+        elif not isinstance(variables, list):
+            variables = [variables]
         features = self.kinrho+variables
 
         vars_corr_diff = [f'{var}_corr_diff' for var in variables]
         for var in variables
             self.df_corr[f'{var}_corr_diff'] = [self.df_corr[f'{var}_corr'] - self.df_corr[var]
 
-        transform_final(features, transformer_features, vars_corr_diff, transformer_targets)
+        self.transformFinal(features, transformer_features, vars_corr_diff, transformer_targets)
 
         sample_weight = self.df_corr.loc[:,'ml_weight']
         X = self.df_corr.loc[:,features]
         Y = self.df_corr.loc[:,vars_corr_diff]
     
         model_file = '{}/mc_{}_{}_final'.format(self.modeldir, self.EBEE, var_type)
-        history, eval_results = trainNN(
-            X, Y, 
-            self.num_hidden_layers, 
-            self.num_units, 
-            self.act,
-            *args,  
-            sample_weight = sample_weight,
-            epochs = 1000, 
-            save_file = model_file, 
-            **kwargs,
-            )
+        if os.path.exists(model_file) and not retrain:  
+            print(f'model {model_file} already exist, skip training')
+        else: 
+            print(f'training new final regressor for {target}')
+            history, eval_results = trainNN(
+                X, Y, 
+                self.num_hidden_layers, 
+                self.num_units, 
+                self.act,
+                *args,  
+                sample_weight = sample_weight,
+                epochs = 1000, 
+                save_file = model_file, 
+                **kwargs,
+                )
 
-        if history_fig is not None: 
-            self.drawTrainingHistories(history, history_fig)
+            if history_fig is not None: 
+                self.drawTrainingHistories(history, history_fig)
 
 
-    def transform_final(self, features, transformer_features, targets, transformer_targets):
+    def transformFinal(self, features, transformer_features, targets, transformer_targets):
 
         self.df_corr.loc[:,features] = transform(self.df_corr.loc[:,features], transformer_features, features)
     
@@ -226,16 +244,11 @@ class dataMCCorrector(object):
         except FileNotFoundError: 
             fit_standard_scaler(self.df_corr.loc[:,targets], targets, transformer_targets)
             self.df_corr.loc[:,targets] = transform(self.df_corr.loc[:,targets], transformer_targets, targets)
- 
-    @staticmethod
-    def standardScale(df, fileName, varNames):
-        try: 
-            df.loc[:,varNames] = transform(df.loc[:,varNames], fileName, varNames)
-        except FileNotFoundError: 
-            fit_standard_scaler(df.loc[:,varNames], varNames, fileName)
-            df.loc[:,varNames] = transform(df.loc[:,varNames], fileName, varNames)
-        return df
 
+
+    def CorrectFinal(self, ): 
+        pass
+ 
     @staticmethod
     def drawTrainingHistories(history, figname):
         fig = plt.figure(tight_layout=True)
