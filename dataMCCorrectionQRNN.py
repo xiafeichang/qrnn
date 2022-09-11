@@ -42,9 +42,11 @@ class dataMCCorrector(object):
             self.dfs['data'] = pd.read_hdf(f'{datasetDir}/{dataName}').sample(nEvt, random_state=random_state).reset_index(drop=True) 
             self.dfs['mc'] = pd.read_hdf(f'{datasetDir}/{mcName}').sample(nEvt, random_state=random_state).reset_index(drop=True) 
 
-    def cutDatasets(self, cut): 
-        self.dfs['data'] = self.dfs['data'].query(cut)
-        self.dfs['mc'] = self.dfs['mc'].query(cut)
+    def cutDatasets(self, cut, data_key='both'): 
+        if data_key == 'data' or data_key == 'both': 
+            self.dfs['data'] = self.dfs['data'].query(cut)
+        elif data_key == 'mc' or data_key == 'both': 
+            self.dfs['mc'] = self.dfs['mc'].query(cut)
 
     def transform(self, trans_vars, transformer, trans_type='standard', **kwargs): 
         self.trans_vars = trans_vars
@@ -68,7 +70,11 @@ class dataMCCorrector(object):
         self.transformer = transformer
 
     def get_transformer(self):
-        return self.transformer
+        try: 
+            return self.transformer
+        except ValueError as e:
+            print(e)
+            return None
 
     def setupNN(self, num_hidden_layers, num_units, activations, num_connected_layers=None, dropout=None, gauss_std=None):
         self.num_hidden_layers = num_hidden_layers
@@ -208,7 +214,7 @@ class dataMCCorrector(object):
         for var in variables
             self.df_corr[f'{var}_corr_diff'] = [self.df_corr[f'{var}_corr'] - self.df_corr[var]
 
-        self.transformFinal(features, transformer_features, vars_corr_diff, transformer_targets)
+        self.transformFinal(vars_corr_diff, transformer_targets, features, transformer_features)
 
         sample_weight = self.df_corr.loc[:,'ml_weight']
         X = self.df_corr.loc[:,features]
@@ -235,9 +241,10 @@ class dataMCCorrector(object):
                 self.drawTrainingHistories(history, history_fig)
 
 
-    def transformFinal(self, features, transformer_features, targets, transformer_targets):
+    def transformFinal(self, targets, transformer_targets, features=None, transformer_features=None):
 
-        self.df_corr.loc[:,features] = transform(self.df_corr.loc[:,features], transformer_features, features)
+        if features is not None and transformer_features is not None: 
+            self.df_corr.loc[:,features] = transform(self.df_corr.loc[:,features], transformer_features, features)
     
         try: 
             self.df_corr.loc[:,targets] = transform(self.df_corr.loc[:,targets], transformer_targets, targets)
@@ -246,8 +253,38 @@ class dataMCCorrector(object):
             self.df_corr.loc[:,targets] = transform(self.df_corr.loc[:,targets], transformer_targets, targets)
 
 
-    def CorrectFinal(self, ): 
-        pass
+    def CorrectFinal(self, outputDir, outputName, variables, transformer_diff, inputDir=None, inputName=None, transformer_features=None, transformed=False): 
+
+        if variables is None: 
+            variables = self.variables 
+        elif not isinstance(variables, list):
+            variables = [variables]
+        features = self.kinrho+variables
+
+        vars_corr_diff = [f'{var}_corr_diff' for var in variables]
+
+
+        if inputName is not None: 
+            df = self.dfs['mc']
+            if transformer_features is not None and not transformed: 
+                df.loc[:, features] = transform(df.loc[:, features], transformer_features, features)
+
+        else:
+            df = pd.read_hdf(f'{inputDir}/{inputName}')#.reset_index(drop=True)
+        if transformer_features is not None: 
+            df.loc[:, features] = transform(df.loc[:, features], transformer_features, features)
+
+        model_file = '{}/mc_{}_{}_final'.format(self.modeldir, self.EBEE, var_type)
+        df_diff = predict(df.loc[:, features], model_file, transformer_diff, vars_corr_diff) 
+
+        if transformer_features is not None: 
+            df.loc[:,features] = inverse_transform(df.loc[:,features], transformer_features, features)
+
+        for var in variables:
+            df[f'{var}_corr_final'] = df[var] + df_diff[f'{var}_corr_diff']
+
+        df.to_hdf(f'{outputDir}/{outputName}','df',mode='w',format='t')
+
  
     @staticmethod
     def drawTrainingHistories(history, figname):
